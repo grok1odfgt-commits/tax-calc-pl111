@@ -1,7 +1,5 @@
 # ==============================================================================
-# ==============================================================================
 # КАЛЬКУЛЯТОР ПОДАТКІВ FIFO — ВСІ ТАБЛИЦІ ПОКАЗУЮТЬ ВСІ РЯДКИ (height="content")
-# ==============================================================================
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -9,13 +7,16 @@ import requests
 from datetime import datetime, timedelta
 from collections import defaultdict
 import io
+import streamlit.components.v1 as components
 
-# ==============================================================================
-# ============================ ДОДАНО ДЛЯ АВТОРИЗАЦІЇ ===========================
-# ==============================================================================
-# Ці рядки дозволяють використовувати функції з файлу auth.py
-from auth import require_auth, show_auth_status_and_logout, require_pro_for_feature, apply_free_limits
-# ==============================================================================
+# ====================== ІМПОРТ АВТОРИЗАЦІЇ ======================
+from auth import (
+    require_auth,
+    show_auth_status_and_logout,
+    require_pro_for_feature,
+    apply_free_limits,
+    check_subscription_status   # додано
+)
 
 # ==============================================================================
 # CSS — гарантуємо повну висоту контенту
@@ -59,7 +60,6 @@ for key in keys:
 # УНІВЕРСАЛЬНЕ ПОВІДОМЛЕННЯ "БРАК ДАНИХ ЗА РІК"
 # ==============================================================================
 def show_no_data_message(section_name=""):
-    """Єдине повідомлення для всіх вкладок, коли за вибраний рік немає даних"""
     msg = "✅ Dane zostały obliczone, ale za wybrany rok brak operacji tego typu."
     if section_name:
         msg = f"✅ {section_name} — dane zostały obliczone, ale za wybrany rok brak operacji."
@@ -650,10 +650,8 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# SIDEBAR — функція бокової панелі (твій оригінальний код)
+# SIDEBAR (твій оригінальний код)
 # ==============================================================================
-import streamlit.components.v1 as components
-
 def update_file_list():
     new_files = st.session_state.hidden_uploader
     if new_files:
@@ -997,72 +995,19 @@ def render_main_tabs():
             elif name == "PIT38": render_PIT38_Tab()
 
 # ==============================================================================
-# ЗАПУСК — головна частина програми
+# ЗАПУСК
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
 
-# ==============================================================================
-# ПАНЕЛЬ ЗВЕРХУ САЙТУ — КНОПКИ УВІЙТИ / РЕЄСТРАЦІЯ
-# ==============================================================================
-st.markdown("---")
-col1, col2, col3 = st.columns([1, 2, 2])
-with col2:
-    if st.button("🔑 Увійти", use_container_width=True):
-        st.session_state.show_login = True
-with col3:
-    if st.button("📝 Реєстрація", use_container_width=True):
-        st.session_state.show_register = True
-st.markdown("---")
+# ====================== АВТОРИЗАЦІЯ ======================
+require_auth()                     # якщо не увійшов – зупинить програму
+check_subscription_status()        # оновлює статус підписки в session_state
 
-# ==============================================================================
-# МОДАЛЬНІ ФОРМИ (з'являються тільки після натискання кнопки)
-# ==============================================================================
-if st.session_state.get("show_login", False):
-    with st.form("login_form"):
-        st.subheader("🔑 Увійти в акаунт")
-        email = st.text_input("Email")
-        password = st.text_input("Пароль", type="password")
-        if st.form_submit_button("Увійти"):
-            try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                st.session_state.user = res.user
-                st.session_state.authenticated = True
-                st.session_state.show_login = False
-                check_subscription_status()
-                st.success("✅ Успішний вхід!")
-                st.rerun()
-            except:
-                st.error("Невірний email або пароль")
-
-if st.session_state.get("show_register", False):
-    with st.form("register_form"):
-        st.subheader("📝 Створити новий акаунт")
-        email = st.text_input("Email")
-        password = st.text_input("Пароль (мінімум 6 символів)", type="password")
-        if st.form_submit_button("Зареєструватися"):
-            try:
-                res = supabase.auth.sign_up({"email": email, "password": password})
-                st.success("✅ Акаунт створено! Перевір пошту (якщо потрібно). Тепер увійди.")
-                st.session_state.show_register = False
-            except Exception as e:
-                st.error(f"Помилка: {e}")
-
-# Якщо користувач ще не увійшов — показуємо привітання і зупиняємо решту
-if not st.session_state.get("authenticated", False):
-    st.title("Ласкаво просимо до Калькулятора податків FIFO")
-    st.info("Щоб почати користуватися калькулятором, натисніть кнопку «Увійти» або «Реєстрація» зверху сторінки.")
-    st.stop()
-
-# ==============================================================================
-# Якщо користувач увійшов — показуємо статус і кнопку виходу в sidebar
-# ==============================================================================
-show_auth_status_and_logout()
-
-# ==============================================================================
-# Основний вміст сайту
-# ==============================================================================
+# ====================== БОКОВА ПАНЕЛЬ ======================
+show_auth_status_and_logout()      # показує статус і кнопку виходу
 uploaded_files = render_sidebar()
 
+# ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
     if not st.session_state.get("is_pro", False):
         require_pro_for_feature("Вибір року")
