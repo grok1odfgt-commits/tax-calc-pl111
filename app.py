@@ -15,7 +15,7 @@ from auth import (
     show_auth_status_and_logout,
     require_pro_for_feature,
     apply_free_limits,
-    check_subscription_status   # додано
+    check_subscription_status
 )
 
 # ==============================================================================
@@ -652,6 +652,9 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
 # ==============================================================================
 # SIDEBAR (твій оригінальний код)
 # ==============================================================================
+# ==============================================================================
+# SIDEBAR (твій оригінальний код)
+# ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
     if new_files:
@@ -717,7 +720,7 @@ def render_FIFO_Data_Tab():
     st.subheader("📋 Скомпільовані дані FIFO")
     if st.session_state.fifo_df is not None:
         st.dataframe(st.session_state.fifo_df, use_container_width=True, height="content")
-
+        
 def render_Finance_Data_Tab():
     st.subheader("💰 Finance Data")
     if st.session_state.finance_df is not None:
@@ -916,7 +919,7 @@ def render_PIT38_Tab():
         st.download_button(label="⬇️ Завантажити PIT-38.xlsx", data=output, file_name=f"PIT-38_{st.session_state.selected_year}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ==============================================================================
-# recalculate_reports + селектор року + вкладки
+# recalculate_reports + селектор року
 # ==============================================================================
 def recalculate_reports(selected_year):
     if st.session_state.fifo_df is None or st.session_state.finance_df is None:
