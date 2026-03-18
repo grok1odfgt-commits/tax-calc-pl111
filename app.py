@@ -66,6 +66,10 @@ def show_no_data_message(section_name=""):
     st.info(msg)
 
 # ==============================================================================
+# ВСІ МОДУЛІ 1–12 (залишаються без змін, я їх не дублюю тут для економії місця)
+# ==============================================================================
+
+# ==============================================================================
 # МОДУЛЬ 1: Імпорт даних від брокера
 # ==============================================================================
 def Module1_Data_Import(uploaded_files):
@@ -710,6 +714,8 @@ def render_sidebar():
     return st.session_state.my_files
 
 # ==============================================================================
+
+# ==============================================================================
 # RENDER ФУНКЦІЇ — вивід вкладок з обмеженнями для FREE
 # ==============================================================================
 def render_Rates_NBP_Tab():
@@ -919,7 +925,7 @@ def render_PIT38_Tab():
         st.download_button(label="⬇️ Завантажити PIT-38.xlsx", data=output, file_name=f"PIT-38_{st.session_state.selected_year}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ==============================================================================
-# recalculate_reports + селектор року
+# recalculate_reports + селектор року (МОДИФІКОВАНО)
 # ==============================================================================
 def recalculate_reports(selected_year):
     if st.session_state.fifo_df is None or st.session_state.finance_df is None:
@@ -963,15 +969,33 @@ def render_global_year_selector():
     if st.session_state.finance_df is not None and not st.session_state.finance_df.empty:
         years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
     year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
+    
+    # Визначаємо поточний індекс
+    current_index = 0
+    if st.session_state.selected_year in year_options:
+        current_index = year_options.index(st.session_state.selected_year)
+    
+    # Функція, яка викликається при зміні року
     def on_year_change():
-        year = st.session_state.global_year
-        if year != st.session_state.get('selected_year'):
-            recalculate_reports(year)
+        new_year = st.session_state.global_year
+        # Якщо користувач не PRO – показуємо попередження і повертаємо старе значення
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
+            # Примусово встановлюємо назад попереднє значення
+            st.session_state.global_year = st.session_state.selected_year
+        else:
+            if new_year != st.session_state.selected_year:
+                recalculate_reports(new_year)
+    
     col_left, _ = st.columns([1, 5])
     with col_left:
-        st.selectbox("Wybierz rok:", options=year_options, key="global_year",
-                     index=year_options.index(st.session_state.selected_year) if st.session_state.selected_year in year_options else 0,
-                     on_change=on_year_change)
+        st.selectbox(
+            "Wybierz rok:",
+            options=year_options,
+            key="global_year",
+            index=current_index,
+            on_change=on_year_change
+        )
 
 def render_main_tabs():
     tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
@@ -998,10 +1022,11 @@ def render_main_tabs():
             elif name == "PIT38": render_PIT38_Tab()
 
 # ==============================================================================
+
+# ==============================================================================
 # ЗАПУСК
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
-
 # ====================== АВТОРИЗАЦІЯ ======================
 require_auth()                     # якщо не увійшов – зупинить програму
 check_subscription_status()        # оновлює статус підписки в session_state
@@ -1012,8 +1037,7 @@ uploaded_files = render_sidebar()
 
 # ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
-    if not st.session_state.get("is_pro", False):
-        require_pro_for_feature("Вибір року")
+    # Видалено виклик require_pro_for_feature("Вибір року") – тепер він всередині on_year_change
     render_global_year_selector()
     render_main_tabs()
 else:
