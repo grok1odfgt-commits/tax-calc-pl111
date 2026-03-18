@@ -4,6 +4,7 @@
 import streamlit as st
 from supabase import create_client, Client
 import os
+import pandas as pd
 
 # ====================== НАЛАШТУВАННЯ SUPABASE ======================
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
@@ -57,7 +58,6 @@ def require_auth():
                     try:
                         check_subscription_status()
                     except Exception as e:
-                        # Логуємо помилку в сайдбар, але не заважаємо користувачеві
                         st.sidebar.warning(f"⚠️ Не вдалося перевірити підписку: {e}")
                     st.success("✅ Успішний вхід!")
                     st.rerun()
@@ -113,27 +113,35 @@ def check_subscription_status():
 
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE КОРИСТУВАЧІВ ======================
 def apply_free_limits(df, tab_name):
+    """Повертає обмежений DataFrame для free-користувачів"""
     if st.session_state.is_pro:
-        return df
-    if df.empty:
+        return df  # PRO — повний доступ
+
+    if df is None or df.empty:
         return df
 
-    if tab_name in ["Tax_Detailed_Report", "Tax_Summary_Report"]:
-        df = df.copy()
-        # Для демонстрації – перші 5 рядків нормально, решта розмито
-        if len(df) > 5:
-            df_styled = df.iloc[:5].style
-            # Повертаємо DataFrame з розміткою – спрощено
-            return df
+    df = df.copy()
+
+    # Визначаємо ліміти для різних вкладок
+    limits = {
+        "Tax_Detailed_Report": 5,
+        "Tax_Summary_Report": 5,
+        "Tax_Dividend": 3,
+        "Tax_Interest": 3
+    }
+
+    if tab_name in limits:
+        limit = limits[tab_name]
+        if len(df) > limit:
+            # Залишаємо тільки перші limit рядків
+            return df.head(limit)
         return df
-    elif tab_name in ["Tax_Dividend", "Tax_Interest"]:
-        df = df.copy()
-        if len(df) > 3:
-            df_styled = df.iloc[:3].style
-            return df
-        return df
+
     elif tab_name == "PIT38":
+        # Повністю замінюємо даних повідомленням
         return pd.DataFrame([["🔒 PRO only — купи підписку, щоб побачити PIT-38"]], columns=["Повідомлення"])
+
+    # Для інших вкладок (наприклад, Rates_NBP, FIFO_Data) обмежень немає
     return df
 
 # ====================== КНОПКА ВИХОДУ + СТАТУС ======================
@@ -147,10 +155,11 @@ def show_auth_status_and_logout():
             st.session_state.clear()
             st.rerun()
 
-# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ ======================
+# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ (використовується для вибору року) ======================
 def require_pro_for_feature(feature_name=""):
+    """Показує попередження, якщо користувач не PRO, але не зупиняє виконання (тільки для інтерактивних дій)"""
     check_subscription_status()
     if not st.session_state.is_pro:
         st.warning(f"🔒 {feature_name} доступно тільки після покупки підписки")
-        st.info("Після оплати напиши мені свій email — я активую за 2 хвилини")
-        st.stop()
+        return False
+    return True
