@@ -66,10 +66,6 @@ def show_no_data_message(section_name=""):
     st.info(msg)
 
 # ==============================================================================
-# ВСІ МОДУЛІ 1–12 (залишаються без змін, я їх не дублюю тут для економії місця)
-# ==============================================================================
-
-# ==============================================================================
 # МОДУЛЬ 1: Імпорт даних від брокера
 # ==============================================================================
 def Module1_Data_Import(uploaded_files):
@@ -741,6 +737,7 @@ def render_Tax_Detailed_Report_Tab():
     if not blocks:
         show_no_data_message("Tax Detailed Report")
         return
+
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
         st.markdown("**Podsumowanie sprzedaz**")
@@ -753,6 +750,7 @@ def render_Tax_Detailed_Report_Tab():
                 styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
             return styles
         st.dataframe(st.session_state.profit_summary.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     for block in blocks:
         if block.empty: continue
         limited_block = apply_free_limits(block, "Tax_Detailed_Report")
@@ -763,6 +761,30 @@ def render_Tax_Detailed_Report_Tab():
         styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
         st.dataframe(styled, use_container_width=True, height="content")
 
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Detailed Report)", key="dl_tax_detailed"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # Блоки
+                for idx, block in enumerate(st.session_state.report_blocks):
+                    block.to_excel(writer, sheet_name=f"Block_{idx+1}", index=False)
+                # Підсумки
+                if st.session_state.sales_summary is not None:
+                    st.session_state.sales_summary.to_excel(writer, sheet_name="Sales Summary", index=False)
+                if st.session_state.profit_summary is not None:
+                    st.session_state.profit_summary.to_excel(writer, sheet_name="Profit Summary", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Tax_Detailed_Report_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
 def render_Tax_Summary_Report_Tab():
     st.subheader("📊 Tax Report — підсумковий податковий звіт (FIFO Summary)")
     df = st.session_state.get('summary_df')
@@ -772,6 +794,7 @@ def render_Tax_Summary_Report_Tab():
     if df.empty:
         show_no_data_message("Tax Summary Report")
         return
+
     limited_df = apply_free_limits(df, "Tax_Summary_Report")
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
@@ -785,9 +808,32 @@ def render_Tax_Summary_Report_Tab():
                 styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
             return styles
         st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     st.markdown("**Детальна таблиця продажів**")
     styled = limited_df.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
     st.dataframe(styled, use_container_width=True, height="content")
+
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Summary Report)", key="dl_tax_summary"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.summary_df is not None:
+                    st.session_state.summary_df.to_excel(writer, sheet_name="Summary", index=False)
+                if st.session_state.summary_sales is not None:
+                    st.session_state.summary_sales.to_excel(writer, sheet_name="Sales Summary", index=False)
+                if st.session_state.summary_profit is not None:
+                    st.session_state.summary_profit.to_excel(writer, sheet_name="Profit Summary", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Tax_Summary_Report_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 def render_Tax_Dividend_Report_Tab():
     st.subheader("💰 Tax Dividend — податковий звіт по дивідендах")
@@ -798,6 +844,7 @@ def render_Tax_Dividend_Report_Tab():
     if df.empty:
         show_no_data_message("Tax Dividend")
         return
+
     limited_df = apply_free_limits(df, "Tax_Dividend")
     col1, col2 = st.columns(2)
     with col1:
@@ -811,6 +858,7 @@ def render_Tax_Dividend_Report_Tab():
             elif row[" "] == "Suma Netto": styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
             return styles
         st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     st.markdown("**Детальна таблиця дивідендів**")
     styled = limited_df.style.format({
         "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
@@ -822,6 +870,28 @@ def render_Tax_Dividend_Report_Tab():
     })
     st.dataframe(styled, use_container_width=True, height="content")
 
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Dividend Report)", key="dl_tax_dividend"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.dividend_df is not None:
+                    st.session_state.dividend_df.to_excel(writer, sheet_name="Dividends", index=False)
+                if st.session_state.dividend_summary_val is not None:
+                    st.session_state.dividend_summary_val.to_excel(writer, sheet_name="Summary (Val)", index=False)
+                if st.session_state.dividend_summary_pln is not None:
+                    st.session_state.dividend_summary_pln.to_excel(writer, sheet_name="Summary (PLN)", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Tax_Dividend_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
 def render_Tax_Interest_Report_Tab():
     st.subheader("📈 Tax Interest — податковий звіт по відсотках")
     df = st.session_state.get('interest_df')
@@ -831,6 +901,7 @@ def render_Tax_Interest_Report_Tab():
     if df.empty:
         show_no_data_message("Tax Interest")
         return
+
     limited_df = apply_free_limits(df, "Tax_Interest")
     col1, col2 = st.columns([1.3, 1.7])
     with col1:
@@ -839,8 +910,31 @@ def render_Tax_Interest_Report_Tab():
     with col2:
         st.markdown("**Podsumowanie (PLN)**")
         st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     st.markdown("**Детальна таблиця відсотків**")
     st.dataframe(limited_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}", "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}", "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}", "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"}), use_container_width=True, height="content")
+
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Interest Report)", key="dl_tax_interest"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.interest_df is not None:
+                    st.session_state.interest_df.to_excel(writer, sheet_name="Interest", index=False)
+                if st.session_state.interest_summary_val is not None:
+                    st.session_state.interest_summary_val.to_excel(writer, sheet_name="Summary (Val)", index=False)
+                if st.session_state.interest_summary_pln is not None:
+                    st.session_state.interest_summary_pln.to_excel(writer, sheet_name="Summary (PLN)", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Tax_Interest_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 def render_Cash_Report_Tab():
     st.subheader("💵 Cash Report — рух готівки")
@@ -851,9 +945,30 @@ def render_Cash_Report_Tab():
     if df.empty:
         show_no_data_message("Cash Report")
         return
+
     st.dataframe(st.session_state.cash_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"}), use_container_width=True, height="content")
     st.markdown("**Підсумки**")
     st.dataframe(st.session_state.cash_summary.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Cash Report)", key="dl_cash"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.cash_df is not None:
+                    st.session_state.cash_df.to_excel(writer, sheet_name="Cash", index=False)
+                if st.session_state.cash_summary is not None:
+                    st.session_state.cash_summary.to_excel(writer, sheet_name="Summary", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Cash_Report_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 def render_Transactions_Report_Tab():
     st.subheader("📋 Transactions Report")
@@ -864,11 +979,31 @@ def render_Transactions_Report_Tab():
     if df.empty:
         show_no_data_message("Transactions Report")
         return
+
+    # Для цієї вкладки обмежень немає, але кнопка тільки для PRO
     styled = st.session_state.transactions_df.style.format({
         "Data i Czas": lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else "",
         "Jednostki": "{:,.4f}", "Cena": "{:,.4f}", "Kwota": "{:,.2f}", "Prowizja": "{:,.2f}"
     })
     st.dataframe(styled, use_container_width=True, height="content")
+
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Transactions Report)", key="dl_transactions"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.transactions_df is not None:
+                    st.session_state.transactions_df.to_excel(writer, sheet_name="Transactions", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Transactions_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 def render_Portfolio_Tab():
     st.subheader("📊 Portfolio — поточний стан портфеля")
@@ -879,6 +1014,7 @@ def render_Portfolio_Tab():
     if df.empty:
         show_no_data_message("Portfolio")
         return
+
     st.markdown("**Основна таблиця портфеля**")
     st.dataframe(st.session_state.portfolio_df.style.format({"Ilosc": "{:g}","Koszt sredni": "{:,.4f}","Suma покупки": "{:,.2f}","Waga %": "{:.2%}"}), use_container_width=True, height="content")
     col1, col2 = st.columns(2)
@@ -889,40 +1025,87 @@ def render_Portfolio_Tab():
         st.markdown("**Вартість за валютою (оригінальна)**")
         st.dataframe(st.session_state.portfolio_currency_value.style.format({"Wartosc": "{:,.2f}"}), hide_index=True, height="content")
 
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Portfolio)", key="dl_portfolio"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.portfolio_df is not None:
+                    st.session_state.portfolio_df.to_excel(writer, sheet_name="Portfolio", index=False)
+                if st.session_state.portfolio_currency_percent is not None:
+                    st.session_state.portfolio_currency_percent.to_excel(writer, sheet_name="Currency Percent", index=False)
+                if st.session_state.portfolio_currency_value is not None:
+                    st.session_state.portfolio_currency_value.to_excel(writer, sheet_name="Currency Value", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"Portfolio_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
 def render_PIT38_Tab():
     st.subheader("📋 PIT-38 — підсумковий податковий звіт")
-    if not st.session_state.get("is_pro", False):
-        st.warning("🔒 PIT-38 доступний тільки для підписників")
-        st.info("Після оплати напишіть мені свій email — активую за 5 хвилин")
-        return
+
     akcje = st.session_state.get('pit38_akcje')
     if akcje is None:
         st.info("Натисніть «Розрахувати все» в боковій панелі")
         return
-    if akcje.empty:
-        show_no_data_message("PIT-38")
-        return
+
+    # Для free показуємо замасковані дані, для pro – повні
+    if st.session_state.get("is_pro", False):
+        akcje_display = akcje
+        dyw_display = st.session_state.pit38_dywidendy
+        zg_display = st.session_state.pit38_zg
+    else:
+        akcje_display = apply_free_limits(akcje, "PIT38")
+        dyw_display = apply_free_limits(st.session_state.pit38_dywidendy, "PIT38")
+        zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
+        st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**PIT-38 - Akcje i Koszty**")
-        st.dataframe(st.session_state.pit38_akcje.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        st.dataframe(akcje_display.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**PIT-38 - Dywidendy**")
-        st.dataframe(st.session_state.pit38_dywidendy.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        st.dataframe(dyw_display.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     st.markdown("**PIT-38 - Podatek do zaplaty**")
-    podatek_do_zaplaty = max(0, st.session_state.pit38_akcje.loc[12, "Wartosc"] + st.session_state.pit38_dywidendy.loc[4, "Wartosc"])
-    podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY<br>Od sumy kwot z poz. 35, 45, 46 i 49 należy odjąć kwotę z poz. 50. Jeżeli różnica jest liczbą ujemną, należy wpisać 0."], "Wartosc": [podatek_do_zaplaty]})
+    if st.session_state.get("is_pro", False):
+        podatek_do_zaplaty = max(0, akcje.loc[12, "Wartosc"] + st.session_state.pit38_dywidendy.loc[4, "Wartosc"])
+        podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY<br>Od sumy kwot z poz. 35, 45, 46 i 49 należy odjąć kwotę z poz. 50. Jeżeli różnica jest liczbą ujemną, należy wpisać 0."], "Wartosc": [podatek_do_zaplaty]})
+    else:
+        podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY"], "Wartosc": ["X"]})
     st.dataframe(podatek_df.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
     st.markdown("**PIT/ZG — Zagraniczne przychody**")
-    st.dataframe(st.session_state.pit38_zg.style.format({"Inne przychody, w tym uzyskane za granicą - Dochod": "{:,.2f}", "Podatek od innych przychodów zapłacony za granicą": "{:,.2f}"}), hide_index=True, height="content")
-    if st.button("📥 Завантажити Excel PIT-38.xlsx"):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            st.session_state.pit38_akcje.to_excel(writer, sheet_name="Akcje", index=False)
-            st.session_state.pit38_dywidendy.to_excel(writer, sheet_name="Dywidendy", index=False)
-            st.session_state.pit38_zg.to_excel(writer, sheet_name="PIT_ZG", index=False)
-        output.seek(0)
-        st.download_button(label="⬇️ Завантажити PIT-38.xlsx", data=output, file_name=f"PIT-38_{st.session_state.selected_year}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    st.dataframe(zg_display.style.format({"Inne przychody, w tym uzyskane za granicą - Dochod": "{:,.2f}", "Podatek od innych przychodów zapłacony za granicą": "{:,.2f}"}), hide_index=True, height="content")
+
+    # Кнопка завантаження Excel
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (PIT-38)", key="dl_pit38"):
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
+        else:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                if st.session_state.pit38_akcje is not None:
+                    st.session_state.pit38_akcje.to_excel(writer, sheet_name="Akcje", index=False)
+                if st.session_state.pit38_dywidendy is not None:
+                    st.session_state.pit38_dywidendy.to_excel(writer, sheet_name="Dywidendy", index=False)
+                if st.session_state.pit38_zg is not None:
+                    st.session_state.pit38_zg.to_excel(writer, sheet_name="PIT_ZG", index=False)
+            output.seek(0)
+            st.download_button(
+                label="⬇️ Завантажити Excel",
+                data=output,
+                file_name=f"PIT-38_{st.session_state.selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 # ==============================================================================
 # recalculate_reports + селектор року (МОДИФІКОВАНО)
