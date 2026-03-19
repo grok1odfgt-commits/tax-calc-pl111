@@ -652,9 +652,6 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
 # ==============================================================================
 # SIDEBAR (твій оригінальний код)
 # ==============================================================================
-# ==============================================================================
-# SIDEBAR (твій оригінальний код)
-# ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
     if new_files:
@@ -710,8 +707,6 @@ def render_sidebar():
     return st.session_state.my_files
 
 # ==============================================================================
-
-# ==============================================================================
 # RENDER ФУНКЦІЇ — вивід вкладок з обмеженнями для FREE
 # ==============================================================================
 def render_Rates_NBP_Tab():
@@ -744,26 +739,38 @@ def render_Tax_Detailed_Report_Tab():
         st.dataframe(st.session_state.sales_summary.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Ogolny profit [PLN]**")
-        def profit_style(row):
-            styles = [''] * 2
-            if row[" "] == "Przeplyw":
-                styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
-            return styles
-        st.dataframe(st.session_state.profit_summary.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
-
-    for block in blocks:
-        if block.empty: continue
-        limited_block = apply_free_limits(block, "Tax_Detailed_Report")
-        # Якщо користувач не PRO, виводимо без стилізації
+        # Для free повністю приховуємо цю таблицю
         if not st.session_state.get("is_pro", False):
-            st.dataframe(limited_block, use_container_width=True, height="content")
+            st.info("🔒 Підсумковий прибуток доступний тільки для PRO-підписників")
         else:
+            def profit_style(row):
+                styles = [''] * 2
+                if row[" "] == "Przeplyw":
+                    styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
+                return styles
+            st.dataframe(st.session_state.profit_summary.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+
+    # Визначаємо, скільки блоків показувати
+    if st.session_state.get("is_pro", False):
+        blocks_to_show = blocks
+    else:
+        blocks_to_show = blocks[:5]  # тільки перші 5 транзакцій
+        if len(blocks) > 5:
+            st.info("🔒 Показано тільки перші 5 транзакцій. Для перегляду всіх придбайте PRO-підписку.")
+
+    for block in blocks_to_show:
+        if block.empty: continue
+        # Для PRO застосовуємо стилізацію, для free – простий DataFrame
+        if st.session_state.get("is_pro", False):
+            limited_block = apply_free_limits(block, "Tax_Detailed_Report")  # поверне оригінал
             def safe_format(x):
                 if pd.isna(x) or isinstance(x, str): return x if isinstance(x, str) else ""
                 return f"{float(x):,.7f}"
             styled = limited_block.style.map(lambda v: 'color: #9c0006' if isinstance(v, (int, float)) and v < 0 else 'color: #006100', subset=['Przepływ [PLN]']).format({"Cena": safe_format, "Kwota": safe_format, "Prowizja": safe_format, "Jednostki": safe_format, "Przychod [PLN]": safe_format, "Koszt [PLN]": safe_format, "Przepływ [PLN]": safe_format, "Kurs NBP": safe_format})
             styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
             st.dataframe(styled, use_container_width=True, height="content")
+        else:
+            st.dataframe(block, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -797,24 +804,31 @@ def render_Tax_Summary_Report_Tab():
         show_no_data_message("Tax Summary Report")
         return
 
-    limited_df = apply_free_limits(df, "Tax_Summary_Report")
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
         st.markdown("**Podsumowanie sprzedaz**")
         st.dataframe(st.session_state.summary_sales.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Ogolny profit [PLN]**")
-        def profit_style(row):
-            styles = [''] * 2
-            if row[" "] == "Przeplyw":
-                styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
-            return styles
-        st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        # Для free приховуємо
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Підсумковий прибуток доступний тільки для PRO-підписників")
+        else:
+            def profit_style(row):
+                styles = [''] * 2
+                if row[" "] == "Przeplyw":
+                    styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
+                return styles
+            st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця продажів**")
-    # Якщо користувач не PRO, виводимо без стилізації
+    # Застосовуємо обмеження (маскування рядків після 5)
+    limited_df = apply_free_limits(df, "Tax_Summary_Report")
     if not st.session_state.get("is_pro", False):
+        # Для free виводимо без стилізації, але з маскуванням (вже зроблено в apply_free_limits)
         st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 5:
+            st.info("🔒 Показано тільки перші 5 рядків. Для перегляду всіх придбайте PRO-підписку.")
     else:
         styled = limited_df.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
         st.dataframe(styled, use_container_width=True, height="content")
@@ -851,24 +865,32 @@ def render_Tax_Dividend_Report_Tab():
         show_no_data_message("Tax Dividend")
         return
 
-    limited_df = apply_free_limits(df, "Tax_Dividend")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Підсумування в валюті**")
-        st.dataframe(st.session_state.dividend_summary_val.style.set_properties(**{'font-weight': 'bold'}).format({"Value": "{:,.2f}"}), hide_index=True, height="content")
+        # Для free приховуємо
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.dividend_summary_val.style.set_properties(**{'font-weight': 'bold'}).format({"Value": "{:,.2f}"}), hide_index=True, height="content")
     with col2:
         st.markdown("**Підсумування (PLN)**")
-        def pln_style(row):
-            styles = [''] * 2
-            if row[" "] in ["Doplata w PL", "Pod. u zrodla"]: styles = ['color: #9c0006'] * 2
-            elif row[" "] == "Suma Netto": styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
-            return styles
-        st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            def pln_style(row):
+                styles = [''] * 2
+                if row[" "] in ["Doplata w PL", "Pod. u zrodla"]: styles = ['color: #9c0006'] * 2
+                elif row[" "] == "Suma Netto": styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
+                return styles
+            st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця дивідендів**")
-    # Якщо користувач не PRO, виводимо без стилізації
+    limited_df = apply_free_limits(df, "Tax_Dividend")
     if not st.session_state.get("is_pro", False):
         st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 3:
+            st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
         styled = limited_df.style.format({
             "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
@@ -912,19 +934,26 @@ def render_Tax_Interest_Report_Tab():
         show_no_data_message("Tax Interest")
         return
 
-    limited_df = apply_free_limits(df, "Tax_Interest")
     col1, col2 = st.columns([1.3, 1.7])
     with col1:
         st.markdown("**Podsumowanie (VAL)**")
-        st.dataframe(st.session_state.interest_summary_val.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.interest_summary_val.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Podsumowanie (PLN)**")
-        st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця відсотків**")
-    # Якщо користувач не PRO, виводимо без стилізації
+    limited_df = apply_free_limits(df, "Tax_Interest")
     if not st.session_state.get("is_pro", False):
         st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 3:
+            st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
         st.dataframe(limited_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}", "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}", "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}", "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"}), use_container_width=True, height="content")
 
@@ -960,7 +989,6 @@ def render_Cash_Report_Tab():
         show_no_data_message("Cash Report")
         return
 
-    # Cash не маскується, але для однаковості теж перевіряємо is_pro
     if not st.session_state.get("is_pro", False):
         st.dataframe(st.session_state.cash_df, use_container_width=True, height="content")
     else:
@@ -998,7 +1026,6 @@ def render_Transactions_Report_Tab():
         show_no_data_message("Transactions Report")
         return
 
-    # Transactions не маскується
     if not st.session_state.get("is_pro", False):
         st.dataframe(st.session_state.transactions_df, use_container_width=True, height="content")
     else:
@@ -1107,7 +1134,10 @@ def render_PIT38_Tab():
     st.dataframe(podatek_df, hide_index=True, height="content")
 
     st.markdown("**PIT/ZG — Zagraniczne przychody**")
-    st.dataframe(zg_display, hide_index=True, height="content")
+    if not st.session_state.get("is_pro", False):
+        st.info("🔒 Дані приховані")
+    else:
+        st.dataframe(zg_display.style.format({"Inne przychody, w tym uzyskane za granicą - Dochod": "{:,.2f}", "Podatek od innych przychodów zapłacony za granicą": "{:,.2f}"}), hide_index=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1227,8 +1257,6 @@ def render_main_tabs():
             elif name == "Transactions": render_Transactions_Report_Tab()
             elif name == "Portfolio": render_Portfolio_Tab()
             elif name == "PIT38": render_PIT38_Tab()
-
-# ==============================================================================
 
 # ==============================================================================
 # ЗАПУСК
