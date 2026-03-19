@@ -54,7 +54,6 @@ def require_auth():
                     st.session_state.user = res.user
                     st.session_state.authenticated = True
                     st.session_state.show_login = False
-                    # Перевіряємо підписку, але ігноруємо помилки – вони не мають блокувати вхід
                     try:
                         check_subscription_status()
                     except Exception as e:
@@ -92,7 +91,6 @@ def check_subscription_status():
             st.session_state.is_pro = data.data[0].get("subscription_active", False)
             st.session_state.subscription_plan = data.data[0].get("subscription_plan", "free")
         else:
-            # Спробуємо створити запис
             try:
                 supabase.table("profiles").insert({
                     "id": st.session_state.user.id,
@@ -113,7 +111,10 @@ def check_subscription_status():
 
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE КОРИСТУВАЧІВ ======================
 def apply_free_limits(df, tab_name):
-    """Повертає обмежений DataFrame для free-користувачів"""
+    """
+    Повертає DataFrame з заміненими на 'X' значеннями для free-користувачів.
+    Для PRO повертає оригінал.
+    """
     if st.session_state.is_pro:
         return df  # PRO — повний доступ
 
@@ -122,32 +123,28 @@ def apply_free_limits(df, tab_name):
 
     df = df.copy()
 
-    # Визначаємо ліміти для різних вкладок
-    limits = {
-        "Tax_Detailed_Report": 5,
-        "Tax_Summary_Report": 5,
-        "Tax_Dividend": 3,
-        "Tax_Interest": 3
-    }
+    # Вкладки, де маскуємо всі значення (крім заголовків)
+    tabs_to_mask = ["Tax_Detailed_Report", "Tax_Summary_Report", "Tax_Dividend", "Tax_Interest"]
 
-    if tab_name in limits:
-        limit = limits[tab_name]
-        if len(df) > limit:
-            # Залишаємо тільки перші limit рядків
-            return df.head(limit)
+    if tab_name in tabs_to_mask:
+        # Замінюємо всі значення в кожній колонці на "X"
+        for col in df.columns:
+            df[col] = "X"
         return df
 
     elif tab_name == "PIT38":
-        # Повністю замінюємо даних повідомленням
-        return pd.DataFrame([["🔒 PRO only — купи підписку, щоб побачити PIT-38"]], columns=["Повідомлення"])
+        # Для PIT38 маскуємо тільки колонку зі значеннями (припускаємо, що вона називається "Wartosc")
+        if "Wartosc" in df.columns:
+            df["Wartosc"] = "X"
+        return df
 
-    # Для інших вкладок (наприклад, Rates_NBP, FIFO_Data) обмежень немає
+    # Для інших вкладок (Transactions, Portfolio, Cash) повертаємо без змін
     return df
 
 # ====================== КНОПКА ВИХОДУ + СТАТУС ======================
 def show_auth_status_and_logout():
     if st.session_state.authenticated:
-        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free (5 транзакцій)"
+        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free (дані замасковані)"
         st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
         st.sidebar.markdown(f"**Статус:** {status}")
         if st.sidebar.button("🚪 Вийти"):
