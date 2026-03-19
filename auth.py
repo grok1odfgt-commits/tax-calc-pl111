@@ -112,7 +112,8 @@ def check_subscription_status():
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE КОРИСТУВАЧІВ ======================
 def apply_free_limits(df, tab_name):
     """
-    Повертає DataFrame з заміненими на 'X' значеннями для free-користувачів.
+    Повертає DataFrame з заміненими на 'X' значеннями для free-користувачів,
+    але перші N рядків залишаються недоторканими.
     Для PRO повертає оригінал.
     """
     if st.session_state.is_pro:
@@ -123,13 +124,21 @@ def apply_free_limits(df, tab_name):
 
     df = df.copy()
 
-    # Вкладки, де маскуємо всі значення (крім заголовків)
-    tabs_to_mask = ["Tax_Detailed_Report", "Tax_Summary_Report", "Tax_Dividend", "Tax_Interest"]
+    # Ліміти для різних вкладок
+    limits = {
+        "Tax_Detailed_Report": 5,
+        "Tax_Summary_Report": 5,
+        "Tax_Dividend": 3,
+        "Tax_Interest": 3
+    }
 
-    if tab_name in tabs_to_mask:
-        # Замінюємо всі значення в кожній колонці на "X"
-        for col in df.columns:
-            df[col] = "X"
+    if tab_name in limits:
+        limit = limits[tab_name]
+        # Якщо рядків більше ніж ліміт, замінюємо всі значення в рядках після ліміту на "X"
+        if len(df) > limit:
+            for i in range(limit, len(df)):
+                for col in df.columns:
+                    df.at[i, col] = "X"
         return df
 
     elif tab_name == "PIT38":
