@@ -754,12 +754,16 @@ def render_Tax_Detailed_Report_Tab():
     for block in blocks:
         if block.empty: continue
         limited_block = apply_free_limits(block, "Tax_Detailed_Report")
-        def safe_format(x):
-            if pd.isna(x) or isinstance(x, str): return x if isinstance(x, str) else ""
-            return f"{float(x):,.7f}"
-        styled = limited_block.style.map(lambda v: 'color: #9c0006' if isinstance(v, (int, float)) and v < 0 else 'color: #006100', subset=['Przepływ [PLN]']).format({"Cena": safe_format, "Kwota": safe_format, "Prowizja": safe_format, "Jednostki": safe_format, "Przychod [PLN]": safe_format, "Koszt [PLN]": safe_format, "Przepływ [PLN]": safe_format, "Kurs NBP": safe_format})
-        styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
-        st.dataframe(styled, use_container_width=True, height="content")
+        # Якщо користувач не PRO, виводимо без стилізації
+        if not st.session_state.get("is_pro", False):
+            st.dataframe(limited_block, use_container_width=True, height="content")
+        else:
+            def safe_format(x):
+                if pd.isna(x) or isinstance(x, str): return x if isinstance(x, str) else ""
+                return f"{float(x):,.7f}"
+            styled = limited_block.style.map(lambda v: 'color: #9c0006' if isinstance(v, (int, float)) and v < 0 else 'color: #006100', subset=['Przepływ [PLN]']).format({"Cena": safe_format, "Kwota": safe_format, "Prowizja": safe_format, "Jednostki": safe_format, "Przychod [PLN]": safe_format, "Koszt [PLN]": safe_format, "Przepływ [PLN]": safe_format, "Kurs NBP": safe_format})
+            styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
+            st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -769,10 +773,8 @@ def render_Tax_Detailed_Report_Tab():
         else:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                # Блоки
                 for idx, block in enumerate(st.session_state.report_blocks):
                     block.to_excel(writer, sheet_name=f"Block_{idx+1}", index=False)
-                # Підсумки
                 if st.session_state.sales_summary is not None:
                     st.session_state.sales_summary.to_excel(writer, sheet_name="Sales Summary", index=False)
                 if st.session_state.profit_summary is not None:
@@ -810,8 +812,12 @@ def render_Tax_Summary_Report_Tab():
         st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця продажів**")
-    styled = limited_df.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
-    st.dataframe(styled, use_container_width=True, height="content")
+    # Якщо користувач не PRO, виводимо без стилізації
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+    else:
+        styled = limited_df.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
+        st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -860,15 +866,19 @@ def render_Tax_Dividend_Report_Tab():
         st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця дивідендів**")
-    styled = limited_df.style.format({
-        "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-        "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-        "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto (Wal)": "{:,.2f}",
-        "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}",
-        "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}",
-        "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"
-    })
-    st.dataframe(styled, use_container_width=True, height="content")
+    # Якщо користувач не PRO, виводимо без стилізації
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+    else:
+        styled = limited_df.style.format({
+            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto (Wal)": "{:,.2f}",
+            "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}",
+            "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}",
+            "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"
+        })
+        st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -912,7 +922,11 @@ def render_Tax_Interest_Report_Tab():
         st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця відсотків**")
-    st.dataframe(limited_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}", "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}", "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}", "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"}), use_container_width=True, height="content")
+    # Якщо користувач не PRO, виводимо без стилізації
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+    else:
+        st.dataframe(limited_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}", "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}", "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}", "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"}), use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -946,7 +960,11 @@ def render_Cash_Report_Tab():
         show_no_data_message("Cash Report")
         return
 
-    st.dataframe(st.session_state.cash_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"}), use_container_width=True, height="content")
+    # Cash не маскується, але для однаковості теж перевіряємо is_pro
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(st.session_state.cash_df, use_container_width=True, height="content")
+    else:
+        st.dataframe(st.session_state.cash_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"}), use_container_width=True, height="content")
     st.markdown("**Підсумки**")
     st.dataframe(st.session_state.cash_summary.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
@@ -980,12 +998,15 @@ def render_Transactions_Report_Tab():
         show_no_data_message("Transactions Report")
         return
 
-    # Для цієї вкладки обмежень немає, але кнопка тільки для PRO
-    styled = st.session_state.transactions_df.style.format({
-        "Data i Czas": lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else "",
-        "Jednostki": "{:,.4f}", "Cena": "{:,.4f}", "Kwota": "{:,.2f}", "Prowizja": "{:,.2f}"
-    })
-    st.dataframe(styled, use_container_width=True, height="content")
+    # Transactions не маскується
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(st.session_state.transactions_df, use_container_width=True, height="content")
+    else:
+        styled = st.session_state.transactions_df.style.format({
+            "Data i Czas": lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else "",
+            "Jednostki": "{:,.4f}", "Cena": "{:,.4f}", "Kwota": "{:,.2f}", "Prowizja": "{:,.2f}"
+        })
+        st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1016,7 +1037,10 @@ def render_Portfolio_Tab():
         return
 
     st.markdown("**Основна таблиця портфеля**")
-    st.dataframe(st.session_state.portfolio_df.style.format({"Ilosc": "{:g}","Koszt sredni": "{:,.4f}","Suma покупки": "{:,.2f}","Waga %": "{:.2%}"}), use_container_width=True, height="content")
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(st.session_state.portfolio_df, use_container_width=True, height="content")
+    else:
+        st.dataframe(st.session_state.portfolio_df.style.format({"Ilosc": "{:g}","Koszt sredni": "{:,.4f}","Suma покупки": "{:,.2f}","Waga %": "{:.2%}"}), use_container_width=True, height="content")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Структура за валютою (уділ %)**")
@@ -1069,10 +1093,10 @@ def render_PIT38_Tab():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**PIT-38 - Akcje i Koszty**")
-        st.dataframe(akcje_display.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        st.dataframe(akcje_display, hide_index=True, height="content")
     with col2:
         st.markdown("**PIT-38 - Dywidendy**")
-        st.dataframe(dyw_display.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        st.dataframe(dyw_display, hide_index=True, height="content")
 
     st.markdown("**PIT-38 - Podatek do zaplaty**")
     if st.session_state.get("is_pro", False):
@@ -1080,10 +1104,10 @@ def render_PIT38_Tab():
         podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY<br>Od sumy kwot z poz. 35, 45, 46 i 49 należy odjąć kwotę z poz. 50. Jeżeli różnica jest liczbą ujemną, należy wpisać 0."], "Wartosc": [podatek_do_zaplaty]})
     else:
         podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY"], "Wartosc": ["X"]})
-    st.dataframe(podatek_df.style.format({"Wartosc": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    st.dataframe(podatek_df, hide_index=True, height="content")
 
     st.markdown("**PIT/ZG — Zagraniczne przychody**")
-    st.dataframe(zg_display.style.format({"Inne przychody, w tym uzyskane za granicą - Dochod": "{:,.2f}", "Podatek od innych przychodów zapłacony za granicą": "{:,.2f}"}), hide_index=True, height="content")
+    st.dataframe(zg_display, hide_index=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
