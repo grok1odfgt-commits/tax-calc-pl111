@@ -1262,10 +1262,10 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Мінімальний відступ зверху, щоб не прилипало до вкладок
+    # Мінімальний відступ зверху, щоб селектор не прилипав до вкладок
     st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
     
-    # Дві колонки однакової ширини, селектор близько до напису
+    # Дві колонки: напис і селектор близько один до одного
     col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="small")
     
     with col_label:
