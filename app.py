@@ -19,22 +19,44 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту
+# CSS — гарантуємо повну висоту контенту + центрування даних + компактність
 # ==============================================================================
 st.markdown("""
 <style>
-    .stDataFrame, div[data-testid="stDataFrame"] {
-        max-height: none !important;
-        height: auto !important;
+    /* Відступи зверху – прибираємо зайвий простір */
+    .main .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 2rem !important;
     }
-    .ag-theme-streamlit {
-        max-height: none !important;
-        height: auto !important;
+    header {
+        margin-top: -1rem;
     }
-    .ag-theme-streamlit .ag-body-viewport,
-    .ag-theme-streamlit .ag-center-cols-viewport {
-        max-height: none !important;
-        height: auto !important;
+    /* Таблиці – центрування числових даних і фіксована ширина для детального звіту */
+    .stDataFrame td {
+        text-align: center !important;
+    }
+    .stDataFrame th {
+        text-align: center !important;
+    }
+    /* Для таблиць детального звіту – однакова ширина колонок */
+    div[data-testid="stDataFrame"] table {
+        table-layout: fixed !important;
+    }
+    div[data-testid="stDataFrame"] td, 
+    div[data-testid="stDataFrame"] th {
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    /* Компактний селектор року */
+    .compact-selectbox > div {
+        width: auto !important;
+        min-width: 150px !important;
+    }
+    /* Стиль для розміру файлів у сайдбарі */
+    .file-size {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: -0.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -663,7 +685,7 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
-        st.subheader("📥 Завантаження даних")
+        # Видалено підзаголовок "📥 Завантаження даних"
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
@@ -686,7 +708,10 @@ def render_sidebar():
             for i, file in enumerate(st.session_state.my_files):
                 col1, col2 = st.columns([0.78, 0.22])
                 size_kb = round(file.size / 1024, 1)
-                col1.write(f"📄 **{file.name}** \n({size_kb} KB)")
+                # Назва файлу
+                col1.markdown(f"📄 **{file.name}**")
+                # Розмір файлу під назвою меншим шрифтом та світлішим кольором
+                col1.markdown(f'<div class="file-size">{size_kb} KB</div>', unsafe_allow_html=True)
                 if col2.button("❌", key=f"del_{i}"):
                     st.session_state.my_files.pop(i)
                     st.rerun()
@@ -711,7 +736,8 @@ def render_sidebar():
 # ==============================================================================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
-    st.dataframe(st.session_state.rates_data, use_container_width=True, height="content")
+    # Форматування з 4 знаками після коми для курсів
+    st.dataframe(st.session_state.rates_data.style.format(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x), use_container_width=True, height="content")
 
 def render_FIFO_Data_Tab():
     st.subheader("📋 Скомпільовані дані FIFO")
@@ -830,7 +856,12 @@ def render_Tax_Summary_Report_Tab():
         if len(df) > 5:
             st.info("🔒 Показано тільки перші 5 рядків. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        styled = limited_df.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
+        # Форматування: два знаки після коми для числових колонок, дати – як текст
+        styled = limited_df.style.format({
+            "Przeplyw PLN": "{:,.2f}",
+            "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Jednostki": "{:,.2f}"
+        }).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
         st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
@@ -955,7 +986,15 @@ def render_Tax_Interest_Report_Tab():
         if len(df) > 3:
             st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        st.dataframe(limited_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}", "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}", "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}", "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"}), use_container_width=True, height="content")
+        styled = limited_df.style.format({
+            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}",
+            "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}",
+            "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}",
+            "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"
+        })
+        st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -992,7 +1031,10 @@ def render_Cash_Report_Tab():
     if not st.session_state.get("is_pro", False):
         st.dataframe(st.session_state.cash_df, use_container_width=True, height="content")
     else:
-        st.dataframe(st.session_state.cash_df.style.format({"Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "", "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"}), use_container_width=True, height="content")
+        st.dataframe(st.session_state.cash_df.style.format({
+            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
+            "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"
+        }), use_container_width=True, height="content")
     st.markdown("**Підсумки**")
     st.dataframe(st.session_state.cash_summary.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
@@ -1067,7 +1109,14 @@ def render_Portfolio_Tab():
     if not st.session_state.get("is_pro", False):
         st.dataframe(st.session_state.portfolio_df, use_container_width=True, height="content")
     else:
-        st.dataframe(st.session_state.portfolio_df.style.format({"Ilosc": "{:g}","Koszt sredni": "{:,.4f}","Suma покупки": "{:,.2f}","Waga %": "{:.2%}"}), use_container_width=True, height="content")
+        # Форматування: Koszt sredni – 4 знаки, Suma покупки – 2 знаки, Waga % – відсотки
+        styled = st.session_state.portfolio_df.style.format({
+            "Ilosc": "{:g}",
+            "Koszt sredni": "{:,.4f}",
+            "Suma покупки": "{:,.2f}",
+            "Waga %": "{:.2%}"
+        })
+        st.dataframe(styled, use_container_width=True, height="content")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Структура за валютою (уділ %)**")
@@ -1117,13 +1166,12 @@ def render_PIT38_Tab():
         zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
         st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**PIT-38 - Akcje i Koszty**")
-        st.dataframe(akcje_display, hide_index=True, height="content")
-    with col2:
-        st.markdown("**PIT-38 - Dywidendy**")
-        st.dataframe(dyw_display, hide_index=True, height="content")
+    # Тепер таблиці виводяться одна під одною, а не в колонках
+    st.markdown("**PIT-38 - Akcje i Koszty**")
+    st.dataframe(akcje_display, hide_index=True, height="content")
+
+    st.markdown("**PIT-38 - Dywidendy**")
+    st.dataframe(dyw_display, hide_index=True, height="content")
 
     st.markdown("**PIT-38 - Podatek do zaplaty**")
     if st.session_state.get("is_pro", False):
@@ -1224,14 +1272,18 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    col_left, _ = st.columns([1, 5])
-    with col_left:
+    # Компактне розташування: напис і селектор в одному рядку
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.write("**Wybierz rok:**")
+    with col2:
         st.selectbox(
-            "Wybierz rok:",
+            "",
             options=year_options,
             key="global_year",
             index=current_index,
-            on_change=on_year_change
+            on_change=on_year_change,
+            label_visibility="collapsed"
         )
 
 def render_main_tabs():
