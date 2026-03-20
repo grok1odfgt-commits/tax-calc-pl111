@@ -19,44 +19,51 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту + центрування даних + компактність
+# CSS — гарантуємо повну висоту контенту та центрування
 # ==============================================================================
 st.markdown("""
 <style>
-    /* Відступи зверху – прибираємо зайвий простір */
-    .main .block-container {
-        padding-top: 0rem !important;
-        padding-bottom: 2rem !important;
+    .stDataFrame, div[data-testid="stDataFrame"] {
+        max-height: none !important;
+        height: auto !important;
     }
-    header {
+    .ag-theme-streamlit {
+        max-height: none !important;
+        height: auto !important;
+    }
+    .ag-theme-streamlit .ag-body-viewport,
+    .ag-theme-streamlit .ag-center-cols-viewport {
+        max-height: none !important;
+        height: auto !important;
+    }
+    /* Прибираємо пусте місце зверху */
+    .main > div:first-child {
         margin-top: -1rem;
     }
-    /* Таблиці – центрування числових даних і фіксована ширина для детального звіту */
-    .stDataFrame td {
-        text-align: center !important;
+    /* Стилі для бокової панелі – файли */
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        padding: 0.2rem 0;
+        border-bottom: 1px solid #eee;
     }
-    .stDataFrame th {
-        text-align: center !important;
+    .file-info {
+        flex: 1;
+        font-size: 0.9rem;
     }
-    /* Для таблиць детального звіту – однакова ширина колонок */
-    div[data-testid="stDataFrame"] table {
-        table-layout: fixed !important;
+    .file-name {
+        font-weight: 500;
+        margin-bottom: 0.1rem;
     }
-    div[data-testid="stDataFrame"] td, 
-    div[data-testid="stDataFrame"] th {
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-    }
-    /* Компактний селектор року */
-    .compact-selectbox > div {
-        width: auto !important;
-        min-width: 150px !important;
-    }
-    /* Стиль для розміру файлів у сайдбарі */
     .file-size {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: -0.2rem;
+        font-size: 0.75rem;
+        color: #aaa;
+    }
+    .delete-btn {
+        width: 60px;
+        margin-left: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,6 +93,64 @@ def show_no_data_message(section_name=""):
     if section_name:
         msg = f"✅ {section_name} — dane zostały obliczone, ale za wybrany rok brak operacji."
     st.info(msg)
+
+# ==============================================================================
+# ДОПОМІЖНА ФУНКЦІЯ ДЛЯ ФОРМАТУВАННЯ ТАБЛИЦЬ
+# ==============================================================================
+def format_dataframe(df, tab_name):
+    """
+    Застосовує центрування та числове форматування до DataFrame.
+    Для PRO повертає стилізований df, для FREE – оригінал.
+    """
+    if df is None or df.empty:
+        return df
+
+    # Якщо користувач не PRO – повертаємо без форматування (там можуть бути "X")
+    if not st.session_state.get("is_pro", False):
+        return df
+
+    df_styled = df.style
+
+    # 1. Центрування всіх комірок
+    df_styled = df_styled.set_properties(**{'text-align': 'center'})
+    df_styled = df_styled.set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
+
+    # 2. Визначаємо, які колонки мають бути відформатовані
+    numeric_2decimal = []     # для більшості числових колонок (2 знаки)
+    numeric_4decimal = []     # для курсів, Koszt sredni (4 знаки)
+    date_columns = []         # для дат
+
+    # Аналізуємо вміст колонок (перші рядки) або використовуємо імена
+    # Простіше: за іменами колонок визначити
+    for col in df.columns:
+        if 'Kurs' in col or 'Kurs NBP' in col or 'Stawka zr. %' in col:
+            numeric_4decimal.append(col)
+        elif 'Koszt sredni' in col:
+            numeric_4decimal.append(col)
+        elif 'Data' in col and 'NBP' not in col:
+            date_columns.append(col)
+        elif col in ['Ilosc', 'Jednostki', 'Cena', 'Kwota', 'Prowizja', 'Przychod', 'Pod. zrodlo', 'Netto',
+                     'Przychod (PLN)', 'Pod. zr. (PLN)', 'Pod. PL (19%)', 'Doplata (PLN)', 'Netto (PLN)',
+                     'Kwota (PLN)', 'Kwota (USD)', 'Wartosc', 'Suma покупки', 'Waga %', 'Przeplyw PLN',
+                     'Przychod [PLN]', 'Koszt [PLN]', 'Przepływ [PLN]', 'Value']:
+            numeric_2decimal.append(col)
+        # додатково можна виявити колонки, що містять числа
+        elif col in df.select_dtypes(include=['float64', 'int64']).columns:
+            # якщо не визначено, пробуємо 2 знаки
+            numeric_2decimal.append(col)
+
+    # Застосовуємо форматування
+    for col in numeric_2decimal:
+        if col in df.columns:
+            df_styled = df_styled.format({col: "{:,.2f}"})
+    for col in numeric_4decimal:
+        if col in df.columns:
+            df_styled = df_styled.format({col: "{:,.4f}"})
+    for col in date_columns:
+        if col in df.columns:
+            df_styled = df_styled.format({col: lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ''})
+
+    return df_styled
 
 # ==============================================================================
 # МОДУЛЬ 1: Імпорт даних від брокера
@@ -657,7 +722,7 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     div_doplata = max(0, div_podatek_pl - div_podatek_zr)
     dywidendy_data = {
         "Komorka": ["-", "G.47", "G.48", "-", "G.49"],
-        "Nazwa": ["Suma wypłat dywidend zagranicznych - podstawa opodatkowania (wiersz pomocniczy)","Zryczałtowany podatek obliczony od przychodów (dochodów), o których mowa в art. 30a ust. 1 pkt 1–5 ustawy, uzyskanych poza granicami Rzeczypospolitej Polskiej (19%)","Podatek zapłacony za granicą, o którym mowa в art. 30a ust. 9 ustawy (przeliczony на złote)","Dokładna wartość podatku до dopłacenia (wiersz pomocniczy)","Różnica między zryczałtowanym podatkiem a podatkiem zapłaconym za granicą (G.47 - G.48, po zaokrągleniu до повних złotych)"],
+        "Nazwa": ["Suma wypłat dywidend zagranicznych - podstawa opodatkowania (wiersz pomocniczy)","Zryczałtowany podatek obliczony od przychodów (dochodów), o których mowa w art. 30a ust. 1 pkt 1–5 ustawy, uzyskanych poza granicami Rzeczypospolitej Polskiej (19%)","Podatek zapłacony za granicą, o którym mowa w art. 30a ust. 9 ustawy (przeliczony na złote)","Dokładna wartość podatku do dopłacenia (wiersz pomocniczy)","Różnica między zryczałtowanym podatkiem a podatkiem zapłaconym za granicą (G.47 - G.48, po zaokrągleniu do pełnych złotych)"],
         "Wartosc": [div_gross, round(div_gross * 0.19, 2), round(div_podatek_zr, 2), round(div_doplata, 2), round(div_doplata)]
     }
     df_dyw = pd.DataFrame(dywidendy_data)
@@ -668,11 +733,11 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
             zg_group = zg.groupby("Kraj emitenta")["Przeplyw PLN"].sum().reset_index()
             zg_group = zg_group.rename(columns={"Kraj emitenta": "Państwo uzyskania przychodu", "Przeplyw PLN": "Inne przychody, w tym uzyskane za granicą - Dochod"})
             zg_group = zg_group[zg_group["Inne przychody, w tym uzyskane za granicą - Dochod"] > 0]
-            zg_group["Podatek od innych przychodów zapłacony за granicą"] = 0
+            zg_group["Podatek od innych przychodów zapłacony za granicą"] = 0
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# SIDEBAR (твій оригінальний код)
+# SIDEBAR (твій оригінальний код, але змінено відображення файлів)
 # ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
@@ -685,12 +750,35 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
-        # Видалено підзаголовок "📥 Завантаження даних"
+        # Заголовок "Завантаження даних" прибрано
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
             div[data-testid="stSidebar"] .stButton button { width: 100% !important; }
             section[data-testid="stSidebar"] p { font-size: 15px !important; line-height: 1.4 !important; }
+            .file-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 10px;
+                padding: 4px 0;
+                border-bottom: 1px solid #eee;
+            }
+            .file-info {
+                flex: 1;
+            }
+            .file-name {
+                font-weight: 500;
+                margin-bottom: 2px;
+            }
+            .file-size {
+                font-size: 11px;
+                color: #aaa;
+            }
+            .delete-btn {
+                width: 60px;
+                margin-left: 10px;
+            }
         </style>
         """, unsafe_allow_html=True)
         if "my_files" not in st.session_state:
@@ -706,15 +794,21 @@ def render_sidebar():
         if st.session_state.my_files:
             st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
             for i, file in enumerate(st.session_state.my_files):
-                col1, col2 = st.columns([0.78, 0.22])
                 size_kb = round(file.size / 1024, 1)
-                # Назва файлу
-                col1.markdown(f"📄 **{file.name}**")
-                # Розмір файлу під назвою меншим шрифтом та світлішим кольором
-                col1.markdown(f'<div class="file-size">{size_kb} KB</div>', unsafe_allow_html=True)
-                if col2.button("❌", key=f"del_{i}"):
-                    st.session_state.my_files.pop(i)
-                    st.rerun()
+                col1, col2 = st.columns([0.78, 0.22])
+                with col1:
+                    st.markdown(f"""
+                    <div class="file-item">
+                        <div class="file-info">
+                            <div class="file-name">{file.name}</div>
+                            <div class="file-size">{size_kb} KB</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    if st.button("❌", key=f"del_{i}", help="Видалити файл"):
+                        st.session_state.my_files.pop(i)
+                        st.rerun()
             if st.button("🗑️ Очистити всі", use_container_width=True):
                 st.session_state.my_files.clear()
                 st.rerun()
@@ -736,18 +830,20 @@ def render_sidebar():
 # ==============================================================================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
-    # Форматування з 4 знаками після коми для курсів
-    st.dataframe(st.session_state.rates_data.style.format(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x), use_container_width=True, height="content")
+    df = format_dataframe(st.session_state.rates_data, "Rates_NBP")
+    st.dataframe(df, use_container_width=True, height="content")
 
 def render_FIFO_Data_Tab():
     st.subheader("📋 Скомпільовані дані FIFO")
     if st.session_state.fifo_df is not None:
-        st.dataframe(st.session_state.fifo_df, use_container_width=True, height="content")
-        
+        df = format_dataframe(st.session_state.fifo_df, "FIFO_Data")
+        st.dataframe(df, use_container_width=True, height="content")
+
 def render_Finance_Data_Tab():
     st.subheader("💰 Finance Data")
     if st.session_state.finance_df is not None:
-        st.dataframe(st.session_state.finance_df, use_container_width=True, height="content")
+        df = format_dataframe(st.session_state.finance_df, "Finance_Data")
+        st.dataframe(df, use_container_width=True, height="content")
 
 def render_Tax_Detailed_Report_Tab():
     st.subheader("📑 Детальний податковий звіт (FIFO)")
@@ -762,41 +858,40 @@ def render_Tax_Detailed_Report_Tab():
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
         st.markdown("**Podsumowanie sprzedaz**")
-        st.dataframe(st.session_state.sales_summary.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        df_sales = format_dataframe(st.session_state.sales_summary, "Tax_Detailed_Report")
+        st.dataframe(df_sales.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Ogolny profit [PLN]**")
-        # Для free повністю приховуємо цю таблицю
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Підсумковий прибуток доступний тільки для PRO-підписників")
         else:
+            df_profit = format_dataframe(st.session_state.profit_summary, "Tax_Detailed_Report")
             def profit_style(row):
                 styles = [''] * 2
                 if row[" "] == "Przeplyw":
                     styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
                 return styles
-            st.dataframe(st.session_state.profit_summary.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+            st.dataframe(df_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
-    # Визначаємо, скільки блоків показувати
     if st.session_state.get("is_pro", False):
         blocks_to_show = blocks
     else:
-        blocks_to_show = blocks[:5]  # тільки перші 5 транзакцій
+        blocks_to_show = blocks[:5]
         if len(blocks) > 5:
             st.info("🔒 Показано тільки перші 5 транзакцій. Для перегляду всіх придбайте PRO-підписку.")
 
     for block in blocks_to_show:
         if block.empty: continue
-        # Для PRO застосовуємо стилізацію, для free – простий DataFrame
+        df_block = format_dataframe(block, "Tax_Detailed_Report")
         if st.session_state.get("is_pro", False):
-            limited_block = apply_free_limits(block, "Tax_Detailed_Report")  # поверне оригінал
             def safe_format(x):
                 if pd.isna(x) or isinstance(x, str): return x if isinstance(x, str) else ""
                 return f"{float(x):,.7f}"
-            styled = limited_block.style.map(lambda v: 'color: #9c0006' if isinstance(v, (int, float)) and v < 0 else 'color: #006100', subset=['Przepływ [PLN]']).format({"Cena": safe_format, "Kwota": safe_format, "Prowizja": safe_format, "Jednostki": safe_format, "Przychod [PLN]": safe_format, "Koszt [PLN]": safe_format, "Przepływ [PLN]": safe_format, "Kurs NBP": safe_format})
+            styled = df_block.style.map(lambda v: 'color: #9c0006' if isinstance(v, (int, float)) and v < 0 else 'color: #006100', subset=['Przepływ [PLN]']).format({"Cena": safe_format, "Kwota": safe_format, "Prowizja": safe_format, "Jednostki": safe_format, "Przychod [PLN]": safe_format, "Koszt [PLN]": safe_format, "Przepływ [PLN]": safe_format, "Kurs NBP": safe_format})
             styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
             st.dataframe(styled, use_container_width=True, height="content")
         else:
-            st.dataframe(block, use_container_width=True, height="content")
+            st.dataframe(df_block, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -833,35 +928,31 @@ def render_Tax_Summary_Report_Tab():
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
         st.markdown("**Podsumowanie sprzedaz**")
-        st.dataframe(st.session_state.summary_sales.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+        df_sales = format_dataframe(st.session_state.summary_sales, "Tax_Summary_Report")
+        st.dataframe(df_sales.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Ogolny profit [PLN]**")
-        # Для free приховуємо
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Підсумковий прибуток доступний тільки для PRO-підписників")
         else:
+            df_profit = format_dataframe(st.session_state.summary_profit, "Tax_Summary_Report")
             def profit_style(row):
                 styles = [''] * 2
                 if row[" "] == "Przeplyw":
                     styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
                 return styles
-            st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+            st.dataframe(df_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця продажів**")
-    # Застосовуємо обмеження (маскування рядків після 5)
     limited_df = apply_free_limits(df, "Tax_Summary_Report")
     if not st.session_state.get("is_pro", False):
-        # Для free виводимо без стилізації, але з маскуванням (вже зроблено в apply_free_limits)
-        st.dataframe(limited_df, use_container_width=True, height="content")
+        df_display = format_dataframe(limited_df, "Tax_Summary_Report")
+        st.dataframe(df_display, use_container_width=True, height="content")
         if len(df) > 5:
             st.info("🔒 Показано тільки перші 5 рядків. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        # Форматування: два знаки після коми для числових колонок, дати – як текст
-        styled = limited_df.style.format({
-            "Przeplyw PLN": "{:,.2f}",
-            "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Jednostki": "{:,.2f}"
-        }).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
+        df_display = format_dataframe(limited_df, "Tax_Summary_Report")
+        styled = df_display.style.format({"Przeplyw PLN": "{:,.2f}", "Data sprzedazy": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else ""}).apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
         st.dataframe(styled, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
@@ -899,39 +990,33 @@ def render_Tax_Dividend_Report_Tab():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Підсумування в валюті**")
-        # Для free приховуємо
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Дані приховані")
         else:
-            st.dataframe(st.session_state.dividend_summary_val.style.set_properties(**{'font-weight': 'bold'}).format({"Value": "{:,.2f}"}), hide_index=True, height="content")
+            df_val = format_dataframe(st.session_state.dividend_summary_val, "Tax_Dividend")
+            st.dataframe(df_val.style.set_properties(**{'font-weight': 'bold'}).format({"Value": "{:,.2f}"}), hide_index=True, height="content")
     with col2:
         st.markdown("**Підсумування (PLN)**")
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Дані приховані")
         else:
+            df_pln = format_dataframe(st.session_state.dividend_summary_pln, "Tax_Dividend")
             def pln_style(row):
                 styles = [''] * 2
                 if row[" "] in ["Doplata w PL", "Pod. u zrodla"]: styles = ['color: #9c0006'] * 2
                 elif row[" "] == "Suma Netto": styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
                 return styles
-            st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+            st.dataframe(df_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця дивідендів**")
     limited_df = apply_free_limits(df, "Tax_Dividend")
+    df_display = format_dataframe(limited_df, "Tax_Dividend")
     if not st.session_state.get("is_pro", False):
-        st.dataframe(limited_df, use_container_width=True, height="content")
+        st.dataframe(df_display, use_container_width=True, height="content")
         if len(df) > 3:
             st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        styled = limited_df.style.format({
-            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto (Wal)": "{:,.2f}",
-            "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}",
-            "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}",
-            "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"
-        })
-        st.dataframe(styled, use_container_width=True, height="content")
+        st.dataframe(df_display, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -971,30 +1056,25 @@ def render_Tax_Interest_Report_Tab():
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Дані приховані")
         else:
-            st.dataframe(st.session_state.interest_summary_val.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+            df_val = format_dataframe(st.session_state.interest_summary_val, "Tax_Interest")
+            st.dataframe(df_val.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     with col2:
         st.markdown("**Podsumowanie (PLN)**")
         if not st.session_state.get("is_pro", False):
             st.info("🔒 Дані приховані")
         else:
-            st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+            df_pln = format_dataframe(st.session_state.interest_summary_pln, "Tax_Interest")
+            st.dataframe(df_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     st.markdown("**Детальна таблиця відсотків**")
     limited_df = apply_free_limits(df, "Tax_Interest")
+    df_display = format_dataframe(limited_df, "Tax_Interest")
     if not st.session_state.get("is_pro", False):
-        st.dataframe(limited_df, use_container_width=True, height="content")
+        st.dataframe(df_display, use_container_width=True, height="content")
         if len(df) > 3:
             st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        styled = limited_df.style.format({
-            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Data NBP": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Przychod": "{:,.2f}", "Pod. zrodlo": "{:,.2f}", "Netto": "{:,.2f}",
-            "Stawka zr. %": "{:.2%}", "Kurs": "{:,.4f}",
-            "Przychod (PLN)": "{:,.2f}", "Pod. zr. (PLN)": "{:,.2f}",
-            "Pod. PL (19%)": "{:,.2f}", "Doplata (PLN)": "{:,.2f}", "Netto (PLN)": "{:,.2f}"
-        })
-        st.dataframe(styled, use_container_width=True, height="content")
+        st.dataframe(df_display, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1028,15 +1108,11 @@ def render_Cash_Report_Tab():
         show_no_data_message("Cash Report")
         return
 
-    if not st.session_state.get("is_pro", False):
-        st.dataframe(st.session_state.cash_df, use_container_width=True, height="content")
-    else:
-        st.dataframe(st.session_state.cash_df.style.format({
-            "Data": lambda x: x.strftime('%Y-%m-%d') if pd.notnull(x) else "",
-            "Kwota (PLN)": "{:,.2f}", "Kwota (USD)": "{:,.2f}", "Kurs (USD)": "{:,.4f}"
-        }), use_container_width=True, height="content")
+    df_display = format_dataframe(st.session_state.cash_df, "Cash")
+    st.dataframe(df_display, use_container_width=True, height="content")
     st.markdown("**Підсумки**")
-    st.dataframe(st.session_state.cash_summary.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    df_summary = format_dataframe(st.session_state.cash_summary, "Cash")
+    st.dataframe(df_summary.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1068,14 +1144,8 @@ def render_Transactions_Report_Tab():
         show_no_data_message("Transactions Report")
         return
 
-    if not st.session_state.get("is_pro", False):
-        st.dataframe(st.session_state.transactions_df, use_container_width=True, height="content")
-    else:
-        styled = st.session_state.transactions_df.style.format({
-            "Data i Czas": lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else "",
-            "Jednostki": "{:,.4f}", "Cena": "{:,.4f}", "Kwota": "{:,.2f}", "Prowizja": "{:,.2f}"
-        })
-        st.dataframe(styled, use_container_width=True, height="content")
+    df_display = format_dataframe(st.session_state.transactions_df, "Transactions")
+    st.dataframe(df_display, use_container_width=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1106,24 +1176,17 @@ def render_Portfolio_Tab():
         return
 
     st.markdown("**Основна таблиця портфеля**")
-    if not st.session_state.get("is_pro", False):
-        st.dataframe(st.session_state.portfolio_df, use_container_width=True, height="content")
-    else:
-        # Форматування: Koszt sredni – 4 знаки, Suma покупки – 2 знаки, Waga % – відсотки
-        styled = st.session_state.portfolio_df.style.format({
-            "Ilosc": "{:g}",
-            "Koszt sredni": "{:,.4f}",
-            "Suma покупки": "{:,.2f}",
-            "Waga %": "{:.2%}"
-        })
-        st.dataframe(styled, use_container_width=True, height="content")
+    df_display = format_dataframe(st.session_state.portfolio_df, "Portfolio")
+    st.dataframe(df_display, use_container_width=True, height="content")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Структура за валютою (уділ %)**")
-        st.dataframe(st.session_state.portfolio_currency_percent.style.format({"Udział %": "{:.2%}"}), hide_index=True, height="content")
+        df_curr_percent = format_dataframe(st.session_state.portfolio_currency_percent, "Portfolio")
+        st.dataframe(df_curr_percent.style.format({"Udział %": "{:.2%}"}), hide_index=True, height="content")
     with col2:
         st.markdown("**Вартість за валютою (оригінальна)**")
-        st.dataframe(st.session_state.portfolio_currency_value.style.format({"Wartosc": "{:,.2f}"}), hide_index=True, height="content")
+        df_curr_value = format_dataframe(st.session_state.portfolio_currency_value, "Portfolio")
+        st.dataframe(df_curr_value.style.format({"Wartosc": "{:,.2f}"}), hide_index=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1166,26 +1229,33 @@ def render_PIT38_Tab():
         zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
         st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
 
-    # Тепер таблиці виводяться одна під одною, а не в колонках
+    # Акції – на всю ширину
     st.markdown("**PIT-38 - Akcje i Koszty**")
-    st.dataframe(akcje_display, hide_index=True, height="content")
+    df_akcje = format_dataframe(akcje_display, "PIT38")
+    st.dataframe(df_akcje, hide_index=True, height="content")
 
+    # Далі дивіденди
     st.markdown("**PIT-38 - Dywidendy**")
-    st.dataframe(dyw_display, hide_index=True, height="content")
+    df_dyw = format_dataframe(dyw_display, "PIT38")
+    st.dataframe(df_dyw, hide_index=True, height="content")
 
+    # Податок до сплати
     st.markdown("**PIT-38 - Podatek do zaplaty**")
     if st.session_state.get("is_pro", False):
         podatek_do_zaplaty = max(0, akcje.loc[12, "Wartosc"] + st.session_state.pit38_dywidendy.loc[4, "Wartosc"])
         podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY<br>Od sumy kwot z poz. 35, 45, 46 i 49 należy odjąć kwotę z poz. 50. Jeżeli różnica jest liczbą ujemną, należy wpisać 0."], "Wartosc": [podatek_do_zaplaty]})
     else:
         podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY"], "Wartosc": ["X"]})
-    st.dataframe(podatek_df, hide_index=True, height="content")
+    df_podatek = format_dataframe(podatek_df, "PIT38")
+    st.dataframe(df_podatek, hide_index=True, height="content")
 
+    # Загранічні доходи
     st.markdown("**PIT/ZG — Zagraniczne przychody**")
     if not st.session_state.get("is_pro", False):
         st.info("🔒 Дані приховані")
     else:
-        st.dataframe(zg_display.style.format({"Inne przychody, w tym uzyskane za granicą - Dochod": "{:,.2f}", "Podatek od innych przychodów zapłacony za granicą": "{:,.2f}"}), hide_index=True, height="content")
+        df_zg = format_dataframe(zg_display, "PIT38")
+        st.dataframe(df_zg, hide_index=True, height="content")
 
     # Кнопка завантаження Excel
     st.markdown("---")
@@ -1254,29 +1324,25 @@ def render_global_year_selector():
     if st.session_state.finance_df is not None and not st.session_state.finance_df.empty:
         years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
     year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
-    
-    # Визначаємо поточний індекс
+
     current_index = 0
     if st.session_state.selected_year in year_options:
         current_index = year_options.index(st.session_state.selected_year)
-    
-    # Функція, яка викликається при зміні року
+
     def on_year_change():
         new_year = st.session_state.global_year
-        # Якщо користувач не PRO – показуємо попередження і повертаємо старе значення
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            # Примусово встановлюємо назад попереднє значення
             st.session_state.global_year = st.session_state.selected_year
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
-    
-    # Компактне розташування: напис і селектор в одному рядку
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.write("**Wybierz rok:**")
-    with col2:
+
+    # Розташовуємо напис і селектор в одному рядку
+    col_label, col_selector = st.columns([1, 2])
+    with col_label:
+        st.markdown("**Wybierz rok:**")
+    with col_selector:
         st.selectbox(
             "",
             options=year_options,
@@ -1297,7 +1363,8 @@ def render_main_tabs():
         with tabs[i]:
             if name in st.session_state.broker_data:
                 st.subheader(f"📄 Оригінальні дані: {name}")
-                st.dataframe(st.session_state.broker_data.get(name), use_container_width=True, height="content")
+                df = format_dataframe(st.session_state.broker_data.get(name), "broker")
+                st.dataframe(df, use_container_width=True, height="content")
             elif name == "Rates_NBP": render_Rates_NBP_Tab()
             elif name == "FIFO_Data": render_FIFO_Data_Tab()
             elif name == "Finance_Data": render_Finance_Data_Tab()
@@ -1324,7 +1391,6 @@ uploaded_files = render_sidebar()
 
 # ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
-    # Видалено виклик require_pro_for_feature("Вибір року") – тепер він всередині on_year_change
     render_global_year_selector()
     render_main_tabs()
 else:
