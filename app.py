@@ -1260,9 +1260,11 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Використовуємо дві колонки: ліва для напису, права для селектора
-    # Колонки 1:2 – напис займає 1/3 ширини, селектор 2/3 (не розтягується на всю сторінку)
-    col_label, col_selector = st.columns([1, 2])
+    # Додаємо трохи відступу зверху, щоб селектор не був надто високо
+    st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
+    
+    # Дві колонки: ліва для напису, права для селектора (колонки однакової ширини)
+    col_label, col_selector = st.columns([1, 1])
     with col_label:
         st.markdown("**Wybierz rok:**")
     with col_selector:
