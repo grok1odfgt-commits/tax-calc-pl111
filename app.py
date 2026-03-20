@@ -1202,8 +1202,41 @@ def render_PIT38_Tab():
             )
 
 # ==============================================================================
-# render_global_year_selector — селектор року
+# recalculate_reports + селектор року + головний оркестратор вкладок
 # ==============================================================================
+def recalculate_reports(selected_year):
+    if st.session_state.fifo_df is None or st.session_state.finance_df is None:
+        return
+    blocks, sales_sum, profit_sum = Module5_FIFO_Detailed_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.report_blocks = blocks
+    st.session_state.sales_summary = sales_sum
+    st.session_state.profit_summary = profit_sum
+    main_df, sales_sum6, profit_sum6 = Module6_FIFO_Summary_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.summary_df = main_df
+    st.session_state.summary_sales = sales_sum6
+    st.session_state.summary_profit = profit_sum6
+    d_main, d_val, d_pln = Module7_Dividend_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.dividend_df = d_main
+    st.session_state.dividend_summary_val = d_val
+    st.session_state.dividend_summary_pln = d_pln
+    i_main, i_val, i_pln = Module8_Interest_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.interest_df = i_main
+    st.session_state.interest_summary_val = i_val
+    st.session_state.interest_summary_pln = i_pln
+    c_main, c_sum = Module9_Cash_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.cash_df = c_main
+    st.session_state.cash_summary = c_sum
+    st.session_state.transactions_df = Module10_Transactions_Report(st.session_state.fifo_df, selected_year)
+    portfolio_df, curr_percent, curr_value = Module11_Portfolio(st.session_state.fifo_df, st.session_state.rates_data)
+    st.session_state.portfolio_df = portfolio_df
+    st.session_state.portfolio_currency_percent = curr_percent
+    st.session_state.portfolio_currency_value = curr_value
+    akcje, dyw, zg = Module12_PIT38_Report(st.session_state.fifo_df, st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.pit38_akcje = akcje
+    st.session_state.pit38_dywidendy = dyw
+    st.session_state.pit38_zg = zg
+    st.session_state.selected_year = selected_year
+
 def render_global_year_selector():
     if st.session_state.fifo_df is None and st.session_state.finance_df is None:
         return
@@ -1241,6 +1274,30 @@ def render_global_year_selector():
             label_visibility="collapsed"
         )
 
+def render_main_tabs():
+    tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
+    if st.session_state.get('fifo_df') is not None:
+        tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
+    if st.session_state.get('finance_df') is not None:
+        tabs_names.extend(["Tax_Dividend", "Tax_Interest", "Cash", "PIT38"])
+    tabs = st.tabs(tabs_names)
+    for i, name in enumerate(tabs_names):
+        with tabs[i]:
+            if name in st.session_state.broker_data:
+                st.subheader(f"📄 Оригінальні дані: {name}")
+                styled_df = style_dataframe(st.session_state.broker_data.get(name), "BrokerData")
+                st.dataframe(styled_df, use_container_width=True, height="content")
+            elif name == "Rates_NBP": render_Rates_NBP_Tab()
+            elif name == "FIFO_Data": render_FIFO_Data_Tab()
+            elif name == "Finance_Data": render_Finance_Data_Tab()
+            elif name == "Tax_Detailed_Report": render_Tax_Detailed_Report_Tab()
+            elif name == "Tax_Summary_Report": render_Tax_Summary_Report_Tab()
+            elif name == "Tax_Dividend": render_Tax_Dividend_Report_Tab()
+            elif name == "Tax_Interest": render_Tax_Interest_Report_Tab()
+            elif name == "Cash": render_Cash_Report_Tab()
+            elif name == "Transactions": render_Transactions_Report_Tab()
+            elif name == "Portfolio": render_Portfolio_Tab()
+            elif name == "PIT38": render_PIT38_Tab()
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
@@ -1253,9 +1310,7 @@ check_subscription_status()
 show_auth_status_and_logout()
 uploaded_files = render_sidebar()
 
-# ==============================================================================
-# ОСНОВНИЙ ВМІСТ
-# ==============================================================================
+# ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
     render_global_year_selector()
     render_main_tabs()
