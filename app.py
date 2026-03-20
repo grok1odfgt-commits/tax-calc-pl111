@@ -1240,11 +1240,13 @@ def recalculate_reports(selected_year):
 def render_global_year_selector():
     if st.session_state.fifo_df is None and st.session_state.finance_df is None:
         return
+    
     years = set()
     if st.session_state.fifo_df is not None and not st.session_state.fifo_df.empty:
         years.update(st.session_state.fifo_df['Date'].dt.year.dropna().unique())
     if st.session_state.finance_df is not None and not st.session_state.finance_df.empty:
         years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
+    
     year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
     
     current_index = 0
@@ -1255,21 +1257,23 @@ def render_global_year_selector():
         new_year = st.session_state.global_year
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            st.session_state.global_year = st.session_state.selected_year
+            st.session_state.global_year = st.session_state.selected_year  # повертаємо назад
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Додаємо трохи відступу зверху, щоб селектор не був надто високо
-    st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
+    # Додаємо відступ зверху, щоб селектор був нижче лінії вкладок
+    st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
     
-    # Дві колонки: ліва для напису, права для селектора (колонки однакової ширини)
-    col_label, col_selector = st.columns([1, 1])
+    # Дві колонки: напис і селектор на одній лінії, селектор коротший
+    col_label, col_selector = st.columns([3, 4], vertical_alignment="center", gap="small")
+    
     with col_label:
         st.markdown("**Wybierz rok:**")
+    
     with col_selector:
         st.selectbox(
-            "",
+            label="", 
             options=year_options,
             key="global_year",
             index=current_index,
@@ -1283,7 +1287,9 @@ def render_main_tabs():
         tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
     if st.session_state.get('finance_df') is not None:
         tabs_names.extend(["Tax_Dividend", "Tax_Interest", "Cash", "PIT38"])
+    
     tabs = st.tabs(tabs_names)
+    
     for i, name in enumerate(tabs_names):
         with tabs[i]:
             if name in st.session_state.broker_data:
@@ -1306,6 +1312,7 @@ def render_main_tabs():
 # ЗАПУСК
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
+
 # ====================== АВТОРИЗАЦІЯ ======================
 require_auth()
 check_subscription_status()
