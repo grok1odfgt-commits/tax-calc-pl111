@@ -1260,19 +1260,14 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Дві колонки: ліва – напис, права – селектор (без власного ярлика)
-    col_label, col_selector = st.columns([1, 4])
-    with col_label:
-        st.markdown("**Wybierz rok:**")
-    with col_selector:
-        st.selectbox(
-            "",
-            options=year_options,
-            key="global_year",
-            index=current_index,
-            on_change=on_year_change,
-            label_visibility="collapsed"
-        )
+    # Простий selectbox – напис ліворуч, селектор праворуч, гарантовано видно
+    st.selectbox(
+        "Wybierz rok:",
+        options=year_options,
+        key="global_year",
+        index=current_index,
+        on_change=on_year_change
+    )
 
 def render_main_tabs():
     tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
@@ -1298,6 +1293,7 @@ def render_main_tabs():
             elif name == "Transactions": render_Transactions_Report_Tab()
             elif name == "Portfolio": render_Portfolio_Tab()
             elif name == "PIT38": render_PIT38_Tab()
+
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
