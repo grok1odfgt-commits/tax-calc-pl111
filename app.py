@@ -36,7 +36,7 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* === ЗМІНА: прибираємо зайві відступи зверху, але не ховаємо header === */
+    /* Зменшуємо верхній відступ, але не ховаємо header */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -108,9 +108,6 @@ def style_dataframe(df, tab_name):
             styler = styler.format({col: "{:.2%}"})
         else:
             styler = styler.format({col: "{:,.2f}"})
-
-    # Для колонок з датами застосовуємо власне форматування (якщо потрібно)
-    # (дані обробляються окремо у функціях рендеру)
 
     return styler
 
@@ -684,7 +681,7 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     div_doplata = max(0, div_podatek_pl - div_podatek_zr)
     dywidendy_data = {
         "Komorka": ["-", "G.47", "G.48", "-", "G.49"],
-        "Nazwa": ["Suma wypłat dywidend zagranicznych - podstawa opodatkowania (wiersz pomocniczy)","Zryczałtowany podatek obliczony od przychodów (dochodów), o których mowa в art. 30a ust. 1 pkt 1–5 ustawy, uzyskanych poza granicami Rzeczypospolitej Polskiej (19%)","Podatek zapłacony za granicą, o którym mowa в art. 30a ust. 9 ustawy (przeliczony на złote)","Dokładna wartość podatku до dopłacenia (wiersz pomocniczy)","Różnica między zryczałtowanym podatkiem a podatkiem zapłaconym za granicą (G.47 - G.48, po zaokrągleniu до повних złotych)"],
+        "Nazwa": ["Suma wypłat dywidend zagranicznych - podstawa opodatkowania (wiersz pomocniczy)","Zryczałtowany podatek obliczony od przychodów (dochodów), o których mowa w art. 30a ust. 1 pkt 1–5 ustawy, uzyskanych poza granicami Rzeczypospolitej Polskiej (19%)","Podatek zapłacony za granicą, o którym mowa w art. 30a ust. 9 ustawy (przeliczony na złote)","Dokładna wartość podatku do dopłacenia (wiersz pomocniczy)","Różnica między zryczałtowanym podatkiem a podatkiem zapłaconym za granicą (G.47 - G.48, po zaokrągleniu do pełnych złotych)"],
         "Wartosc": [div_gross, round(div_gross * 0.19, 2), round(div_podatek_zr, 2), round(div_doplata, 2), round(div_doplata)]
     }
     df_dyw = pd.DataFrame(dywidendy_data)
@@ -695,7 +692,7 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
             zg_group = zg.groupby("Kraj emitenta")["Przeplyw PLN"].sum().reset_index()
             zg_group = zg_group.rename(columns={"Kraj emitenta": "Państwo uzyskania przychodu", "Przeplyw PLN": "Inne przychody, w tym uzyskane za granicą - Dochod"})
             zg_group = zg_group[zg_group["Inne przychody, w tym uzyskane za granicą - Dochod"] > 0]
-            zg_group["Podatek od innych przychodów zapłacony за granicą"] = 0
+            zg_group["Podatek od innych przychodów zapłacony za granicą"] = 0
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
@@ -761,7 +758,6 @@ def render_sidebar():
 # ==============================================================================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
-    # Для курсів використовуємо стилізацію
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
     st.dataframe(styled_df, use_container_width=True, height="content")
 
@@ -790,7 +786,6 @@ def render_Tax_Detailed_Report_Tab():
     col1, col2 = st.columns([1.4, 1.6])
     with col1:
         st.markdown("**Podsumowanie sprzedaz**")
-        # Підсумкова таблиця (тільки для PRO)
         if not st.session_state.get("is_pro", False):
             st.dataframe(st.session_state.sales_summary, hide_index=True, height="content")
         else:
@@ -807,7 +802,6 @@ def render_Tax_Detailed_Report_Tab():
                 return styles
             st.dataframe(st.session_state.profit_summary.style.apply(profit_style, axis=1).format({"Value": "{:,.7f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
 
-    # Визначаємо, скільки блоків показувати
     if st.session_state.get("is_pro", False):
         blocks_to_show = blocks
     else:
@@ -818,18 +812,13 @@ def render_Tax_Detailed_Report_Tab():
     for block in blocks_to_show:
         if block.empty: continue
         if st.session_state.get("is_pro", False):
-            # Для PRO – застосовуємо стилізацію з центруванням і форматуванням чисел
             limited_block = apply_free_limits(block, "Tax_Detailed_Report")  # поверне оригінал
-            # === ЗМІНА: використовуємо style_dataframe для форматування ===
             styled = style_dataframe(limited_block, "Tax_Detailed_Report")
-            # Додатково прибираємо останній рядок, якщо потрібно (залишено оригінальну логіку)
             styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
             st.dataframe(styled, use_container_width=True, height="content")
         else:
-            # Для free – виводимо без стилів (дані вже замасковані)
             st.dataframe(block, use_container_width=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Detailed Report)", key="dl_tax_detailed"):
         if not st.session_state.get("is_pro", False):
@@ -887,13 +876,10 @@ def render_Tax_Summary_Report_Tab():
         if len(df) > 5:
             st.info("🔒 Показано тільки перші 5 рядків. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        # === ЗМІНА: використовуємо style_dataframe ===
         styled = style_dataframe(limited_df, "Tax_Summary_Report")
-        # Для PRO додаємо кольорове форматування (залишаємо оригінальне)
         styled = styled.apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
         st.dataframe(styled, use_container_width=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Summary Report)", key="dl_tax_summary"):
         if not st.session_state.get("is_pro", False):
@@ -951,11 +937,9 @@ def render_Tax_Dividend_Report_Tab():
         if len(df) > 3:
             st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        # === ЗМІНА: використовуємо style_dataframe ===
         styled = style_dataframe(limited_df, "Tax_Dividend")
         st.dataframe(styled, use_container_width=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Dividend Report)", key="dl_tax_dividend"):
         if not st.session_state.get("is_pro", False):
@@ -1008,11 +992,9 @@ def render_Tax_Interest_Report_Tab():
         if len(df) > 3:
             st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
     else:
-        # === ЗМІНА: використовуємо style_dataframe ===
         styled = style_dataframe(limited_df, "Tax_Interest")
         st.dataframe(styled, use_container_width=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Interest Report)", key="dl_tax_interest"):
         if not st.session_state.get("is_pro", False):
@@ -1047,14 +1029,11 @@ def render_Cash_Report_Tab():
     if not st.session_state.get("is_pro", False):
         st.dataframe(df, use_container_width=True, height="content")
     else:
-        # === ЗМІНА: використовуємо style_dataframe ===
         styled = style_dataframe(df, "Cash")
         st.dataframe(styled, use_container_width=True, height="content")
     st.markdown("**Підсумки**")
-    # Підсумки не стилізуємо (вони маленькі)
     st.dataframe(st.session_state.cash_summary, hide_index=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Cash Report)", key="dl_cash"):
         if not st.session_state.get("is_pro", False):
@@ -1087,11 +1066,9 @@ def render_Transactions_Report_Tab():
     if not st.session_state.get("is_pro", False):
         st.dataframe(df, use_container_width=True, height="content")
     else:
-        # === ЗМІНА: використовуємо style_dataframe ===
         styled = style_dataframe(df, "Transactions")
         st.dataframe(styled, use_container_width=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Transactions Report)", key="dl_transactions"):
         if not st.session_state.get("is_pro", False):
@@ -1123,7 +1100,6 @@ def render_Portfolio_Tab():
     if not st.session_state.get("is_pro", False):
         st.dataframe(df, use_container_width=True, height="content")
     else:
-        # === ЗМІНА: використовуємо style_dataframe (колонка Koszt sredni буде з 4 знаками) ===
         styled = style_dataframe(df, "Portfolio")
         st.dataframe(styled, use_container_width=True, height="content")
     col1, col2 = st.columns(2)
@@ -1134,7 +1110,6 @@ def render_Portfolio_Tab():
         st.markdown("**Вартість за валютою (оригінальна)**")
         st.dataframe(st.session_state.portfolio_currency_value, hide_index=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Portfolio)", key="dl_portfolio"):
         if not st.session_state.get("is_pro", False):
@@ -1164,7 +1139,6 @@ def render_PIT38_Tab():
         st.info("Натисніть «Розрахувати все» в боковій панелі")
         return
 
-    # Для free показуємо замасковані дані, для pro – повні
     if st.session_state.get("is_pro", False):
         akcje_display = akcje
         dyw_display = st.session_state.pit38_dywidendy
@@ -1175,7 +1149,6 @@ def render_PIT38_Tab():
         zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
         st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
 
-    # === ЗМІНА: таблиці одна під одною, без колонок ===
     st.markdown("**PIT-38 - Akcje i Koszty**")
     if st.session_state.get("is_pro", False):
         styled = style_dataframe(akcje_display, "PIT38")
@@ -1207,7 +1180,6 @@ def render_PIT38_Tab():
         styled = style_dataframe(zg_display, "PIT38")
         st.dataframe(styled, hide_index=True, height="content")
 
-    # Кнопка завантаження Excel
     st.markdown("---")
     if st.button("📥 Завантажити Excel (PIT-38)", key="dl_pit38"):
         if not st.session_state.get("is_pro", False):
@@ -1275,24 +1247,19 @@ def render_global_year_selector():
         years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
     year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
     
-    # Визначаємо поточний індекс
     current_index = 0
     if st.session_state.selected_year in year_options:
         current_index = year_options.index(st.session_state.selected_year)
     
-    # Функція, яка викликається при зміні року
     def on_year_change():
         new_year = st.session_state.global_year
-        # Якщо користувач не PRO – показуємо попередження і повертаємо старе значення
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            # Примусово встановлюємо назад попереднє значення
             st.session_state.global_year = st.session_state.selected_year
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # === ЗМІНА: розміщуємо селектор у лівій частині (вже було, залишаємо) ===
     col_left, _ = st.columns([1, 5])
     with col_left:
         st.selectbox(
@@ -1333,11 +1300,11 @@ def render_main_tabs():
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
 # ====================== АВТОРИЗАЦІЯ ======================
-require_auth()                     # якщо не увійшов – зупинить програму
-check_subscription_status()        # оновлює статус підписки в session_state
+require_auth()
+check_subscription_status()
 
 # ====================== БОКОВА ПАНЕЛЬ ======================
-show_auth_status_and_logout()      # показує статус і кнопку виходу
+show_auth_status_and_logout()
 uploaded_files = render_sidebar()
 
 # ====================== ОСНОВНИЙ ВМІСТ ======================
