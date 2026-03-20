@@ -1262,18 +1262,18 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Додаємо відступ зверху, щоб селектор був нижче лінії вкладок
-    st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
+    # Мінімальний відступ зверху, щоб не прилипало до вкладок
+    st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
     
-    # Дві колонки: напис і селектор на одній лінії, селектор коротший
-    col_label, col_selector = st.columns([3, 4], vertical_alignment="center", gap="small")
+    # Дві колонки однакової ширини, селектор близько до напису
+    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="small")
     
     with col_label:
         st.markdown("**Wybierz rok:**")
     
     with col_selector:
         st.selectbox(
-            label="", 
+            label="",
             options=year_options,
             key="global_year",
             index=current_index,
