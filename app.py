@@ -1262,11 +1262,11 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Мінімальний відступ зверху, щоб селектор не прилипав до вкладок
-    st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
+    # Дуже маленький відступ зверху, щоб селектор не прилипав до вкладок
+    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
     
-    # Дві колонки: напис і селектор близько один до одного
-    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="small")
+    # Дві колонки: напис і селектор — майже впритул один до одного
+    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="none")
     
     with col_label:
         st.markdown("**Wybierz rok:**")
@@ -1278,7 +1278,8 @@ def render_global_year_selector():
             key="global_year",
             index=current_index,
             on_change=on_year_change,
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            placeholder="Wybierz..."  # на всяк випадок, якщо порожньо
         )
 
 def render_main_tabs():
