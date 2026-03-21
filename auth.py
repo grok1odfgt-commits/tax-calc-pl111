@@ -1,5 +1,5 @@
 # ==============================================================================
-# AUTH.PY — СИСТЕМА РЕЄСТРАЦІЇ + ПІДПИСКИ (РУЧНА АКТИВАЦІЯ)
+# AUTH.PY — СИСТЕМА РЕЄСТРАЦІЇ + ПІДПИСКИ (СУЧАСНИЙ ДИЗАЙН)
 # ==============================================================================
 import streamlit as st
 from supabase import create_client, Client
@@ -15,6 +15,46 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     st.stop()
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ==============================================================================
+# CSS ДЛЯ СТИЛІЗАЦІЇ ФОРМ (додаємо в потрібному місці)
+# ==============================================================================
+def inject_auth_styles():
+    st.markdown("""
+    <style>
+        /* Стилі для форм входу та реєстрації */
+        .stForm {
+            background-color: white;
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+            border: 1px solid #eef2f6;
+        }
+        .stForm input {
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 0.6rem 1rem;
+        }
+        .stForm button {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .stForm button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(37,99,235,0.2);
+        }
+        h1, h2, h3 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ ======================
 def init_auth_session():
@@ -32,6 +72,9 @@ def require_auth():
     init_auth_session()
     if st.session_state.authenticated:
         return
+
+    # Додаємо стилі для форм
+    inject_auth_styles()
 
     st.markdown("---")
     col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
@@ -134,7 +177,6 @@ def apply_free_limits(df, tab_name):
 
     if tab_name in limits:
         limit = limits[tab_name]
-        # Якщо рядків більше ніж ліміт, замінюємо всі значення в рядках після ліміту на "X"
         if len(df) > limit:
             for i in range(limit, len(df)):
                 for col in df.columns:
@@ -142,12 +184,10 @@ def apply_free_limits(df, tab_name):
         return df
 
     elif tab_name == "PIT38":
-        # Для PIT38 маскуємо тільки колонку зі значеннями (припускаємо, що вона називається "Wartosc")
         if "Wartosc" in df.columns:
             df["Wartosc"] = "X"
         return df
 
-    # Для інших вкладок (Transactions, Portfolio, Cash) повертаємо без змін
     return df
 
 # ====================== КНОПКА ВИХОДУ + СТАТУС ======================
@@ -161,7 +201,7 @@ def show_auth_status_and_logout():
             st.session_state.clear()
             st.rerun()
 
-# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ (використовується для вибору року) ======================
+# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ ======================
 def require_pro_for_feature(feature_name=""):
     """Показує попередження, якщо користувач не PRO, але не зупиняє виконання (тільки для інтерактивних дій)"""
     check_subscription_status()
