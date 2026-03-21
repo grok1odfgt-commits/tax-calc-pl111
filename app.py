@@ -16,6 +16,7 @@ from auth import (
     require_pro_for_feature,
     apply_free_limits,
     check_subscription_status
+    render_top_bar   # для горизонтального меню
 )
 
 # ==============================================================================
@@ -1390,12 +1391,16 @@ def render_sidebar():
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
 
+# ====================== ВЕРХНЯ ПАНЕЛЬ АВТОРИЗАЦІЇ ======================
+from auth import render_top_bar   # додаємо імпорт (якщо ще не імпортовано)
+render_top_bar()
+
 # ====================== АВТОРИЗАЦІЯ ======================
 require_auth()
 check_subscription_status()
 
 # ====================== БОКОВА ПАНЕЛЬ ======================
-show_auth_status_and_logout()
+# show_auth_status_and_logout()  # більше не потрібно – видалено
 uploaded_files = render_sidebar()
 
 # ====================== ОСНОВНИЙ ВМІСТ ======================
