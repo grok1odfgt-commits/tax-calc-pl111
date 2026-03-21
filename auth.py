@@ -26,80 +26,63 @@ def init_auth_session():
         st.session_state.is_pro = False
     if "subscription_plan" not in st.session_state:
         st.session_state.subscription_plan = "free"
+    if "show_login_dialog" not in st.session_state:
+        st.session_state.show_login_dialog = False
+    if "show_register_dialog" not in st.session_state:
+        st.session_state.show_register_dialog = False
 
-# ====================== ВЕРХНЯ ПАНЕЛЬ (горизонтальна) ======================
-def render_top_bar():
-    """Рендерить горизонтальну панель з кнопками входу/реєстрації або інформацією про користувача."""
-    init_auth_session()
-
-    # Використовуємо 4 колонки: лого (або пусто), кнопки, пусто
-    col_logo, col_buttons, col_spacer = st.columns([1, 2, 1])
-    with col_buttons:
-        if not st.session_state.authenticated:
-            # Кнопки для неавторизованого користувача
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("🔑 Увійти", use_container_width=True):
-                    st.session_state.show_login = True
-            with col2:
-                if st.button("📝 Реєстрація", use_container_width=True):
-                    st.session_state.show_register = True
-        else:
-            # Інформація про авторизованого користувача
-            status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            st.markdown(f"**{st.session_state.user.email}** &nbsp;&nbsp; {status}")
-            if st.button("🚪 Вийти", use_container_width=True):
-                supabase.auth.sign_out()
-                st.session_state.clear()
-                st.rerun()
-
-# ====================== ОСНОВНА ФУНКЦІЯ: ПЕРЕВІРКА АВТОРИЗАЦІЇ ======================
-def require_auth():
-    """Показує модальні форми логіну/реєстрації, якщо користувач не увійшов."""
-    init_auth_session()
-    if st.session_state.authenticated:
+# ====================== МОДАЛЬНІ ВІКНА (DIALOG) ======================
+def show_login_modal():
+    """Відображає модальне вікно входу"""
+    if not st.session_state.get("show_login_dialog", False):
         return
 
-    # Більше немає кнопок у тілі сторінки – вони перенесені у верхню панель
-
-    # === МОДАЛЬНЕ ВІКНО ЛОГІНУ ===
-    if st.session_state.get("show_login", False):
-        with st.form("login_form"):
-            st.subheader("🔑 Увійти в акаунт")
-            email = st.text_input("Email")
-            password = st.text_input("Пароль", type="password")
-            if st.form_submit_button("Увійти"):
+    @st.dialog("🔑 Увійти в акаунт")
+    def login_form():
+        email = st.text_input("Email")
+        password = st.text_input("Пароль", type="password")
+        if st.button("Увійти", type="primary", use_container_width=True):
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.session_state.authenticated = True
+                st.session_state.show_login_dialog = False
                 try:
-                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user = res.user
-                    st.session_state.authenticated = True
-                    st.session_state.show_login = False
-                    try:
-                        check_subscription_status()
-                    except Exception as e:
-                        st.sidebar.warning(f"⚠️ Не вдалося перевірити підписку: {e}")
-                    st.success("✅ Успішний вхід!")
-                    st.rerun()
-                except Exception as auth_error:
-                    st.error(f"Помилка входу: {auth_error}")
-
-    # === МОДАЛЬНЕ ВІКНО РЕЄСТРАЦІЇ ===
-    if st.session_state.get("show_register", False):
-        with st.form("register_form"):
-            st.subheader("📝 Створити новий акаунт")
-            email = st.text_input("Email")
-            password = st.text_input("Пароль (мінімум 6 символів)", type="password")
-            if st.form_submit_button("Зареєструватися"):
-                try:
-                    res = supabase.auth.sign_up({"email": email, "password": password})
-                    st.success("✅ Акаунт створено! Перевір пошту (якщо потрібно). Тепер увійди.")
-                    st.session_state.show_register = False
+                    check_subscription_status()
                 except Exception as e:
-                    st.error(f"Помилка: {e}")
+                    st.sidebar.warning(f"⚠️ Не вдалося перевірити підписку: {e}")
+                st.success("✅ Успішний вхід!")
+                st.rerun()
+            except Exception as auth_error:
+                st.error(f"Помилка входу: {auth_error}")
 
-    # Якщо не увійшов – зупиняємо весь додаток (показуємо тільки форму)
-    st.info("👋 Для користування калькулятором потрібно увійти або зареєструватися")
-    st.stop()
+    login_form()
+
+def show_register_modal():
+    """Відображає модальне вікно реєстрації"""
+    if not st.session_state.get("show_register_dialog", False):
+        return
+
+    @st.dialog("📝 Створити новий акаунт")
+    def register_form():
+        email = st.text_input("Email")
+        password = st.text_input("Пароль (мінімум 6 символів)", type="password")
+        if st.button("Зареєструватися", type="primary", use_container_width=True):
+            try:
+                res = supabase.auth.sign_up({"email": email, "password": password})
+                st.success("✅ Акаунт створено! Перевір пошту (якщо потрібно). Тепер увійди.")
+                st.session_state.show_register_dialog = False
+            except Exception as e:
+                st.error(f"Помилка: {e}")
+
+    register_form()
+
+# ====================== КНОПКА ВИХОДУ (викликається з верхньої панелі) ======================
+def logout():
+    supabase.auth.sign_out()
+    st.session_state.clear()
+    init_auth_session()
+    st.rerun()
 
 # ====================== ПЕРЕВІРКА ПІДПИСКИ ======================
 def check_subscription_status():
@@ -139,12 +122,14 @@ def apply_free_limits(df, tab_name):
     Для PRO повертає оригінал.
     """
     if st.session_state.is_pro:
-        return df
+        return df  # PRO — повний доступ
 
     if df is None or df.empty:
         return df
 
     df = df.copy()
+
+    # Ліміти для різних вкладок
     limits = {
         "Tax_Detailed_Report": 5,
         "Tax_Summary_Report": 5,
@@ -154,6 +139,7 @@ def apply_free_limits(df, tab_name):
 
     if tab_name in limits:
         limit = limits[tab_name]
+        # Якщо рядків більше ніж ліміт, замінюємо всі значення в рядках після ліміту на "X"
         if len(df) > limit:
             for i in range(limit, len(df)):
                 for col in df.columns:
@@ -161,18 +147,15 @@ def apply_free_limits(df, tab_name):
         return df
 
     elif tab_name == "PIT38":
+        # Для PIT38 маскуємо тільки колонку зі значеннями (припускаємо, що вона називається "Wartosc")
         if "Wartosc" in df.columns:
             df["Wartosc"] = "X"
         return df
 
+    # Для інших вкладок (Transactions, Portfolio, Cash) повертаємо без змін
     return df
 
-# ====================== КНОПКА ВИХОДУ + СТАТУС (ЗАЛИШЕНО ДЛЯ СУМІСНОСТІ, АЛЕ НЕ ВИКОРИСТОВУЄТЬСЯ) ======================
-def show_auth_status_and_logout():
-    """Більше не використовується, оскільки статус тепер у верхній панелі."""
-    pass
-
-# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ ======================
+# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ (використовується для вибору року) ======================
 def require_pro_for_feature(feature_name=""):
     """Показує попередження, якщо користувач не PRO, але не зупиняє виконання (тільки для інтерактивних дій)"""
     check_subscription_status()
@@ -180,3 +163,8 @@ def require_pro_for_feature(feature_name=""):
         st.warning(f"🔒 {feature_name} доступно тільки після покупки підписки")
         return False
     return True
+
+# ====================== СТАРА ФУНКЦІЯ ДЛЯ СУМІСНОСТІ (не використовується в новому інтерфейсі) ======================
+def require_auth():
+    """Стара функція – тепер не блокує додаток, а лише ініціалізує сесію"""
+    init_auth_session()
