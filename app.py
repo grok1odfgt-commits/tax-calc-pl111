@@ -38,7 +38,7 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Приховуємо стандартний заголовок (разом із гамбургером) */
+    /* Приховуємо стандартний заголовок */
     header[data-testid="stHeader"] {
         display: none !important;
     }
@@ -724,27 +724,24 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — оновлена
+# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR)
 # ==============================================================================
 def render_top_bar():
-    # Використовуємо columns для розташування: ліворуч порожньо (щоб зрушити вправо)
-    # або просто right-align через columns. Використаємо дві колонки: перша порожня, друга з контентом.
-    _, col_right = st.columns([0.7, 0.3])
-    
+    # Дві колонки: ліва – порожня (або мінімальна), права – контент
+    _, col_right = st.columns([0.6, 0.4])
     with col_right:
         if st.session_state.authenticated:
-            # Залогінений – email, статус, кнопка вийти в одному рядку
-            status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            col_email, col_status, col_logout = st.columns([1, 1, 0.8])
-            with col_email:
+            # Залогінений: email та статус один під одним, кнопка вийти праворуч
+            col_info, col_logout = st.columns([0.7, 0.3])
+            with col_info:
                 st.markdown(f"**{st.session_state.user.email}**")
-            with col_status:
+                status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
                 st.markdown(f"**{status_icon}**")
             with col_logout:
                 if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
                     logout()
         else:
-            # Незалогінений – кнопки входу та реєстрації (менші)
+            # Незалогінений: дві кнопки поряд
             col_btn1, col_btn2 = st.columns([1, 1])
             with col_btn1:
                 if st.button("🔑 Увійти", key="login_top", use_container_width=True):
@@ -753,7 +750,7 @@ def render_top_bar():
                 if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
                     st.session_state.show_register_dialog = True
 
-    # Викликаємо модальні вікна (вони відобразяться, якщо прапорці встановлені)
+    # Модальні вікна
     show_login_modal()
     show_register_modal()
 
