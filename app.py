@@ -56,13 +56,13 @@ st.markdown("""
         border-bottom: 1px solid #ddd;
         margin-bottom: 1rem;
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: center;
     }
-    .site-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1e466e;
+    /* Кнопки зменшеного розміру */
+    .small-button {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.6rem;
     }
     .user-info {
         display: flex;
@@ -725,25 +725,28 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR)
+# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — без лівого напису, з елементами справа
 # ==============================================================================
 def render_top_bar():
-    # Верхня панель – використовуємо columns для розташування
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.markdown('<div class="site-title">🧮 FIFO Tax Calculator</div>', unsafe_allow_html=True)
-    with col2:
-        # Вирівнюємо праворуч за допомогою колонок
+    # Контейнер для верхньої панелі (використовуємо колонки для правого вирівнювання)
+    col_right, col_left = st.columns([0.85, 0.15])  # більша частина справа для кнопок
+    with col_right:
         if st.session_state.authenticated:
-            # Залогінений – показуємо email, статус, кнопку вийти
+            # Залогінений – показуємо email, статус, кнопку вийти в одному рядку
             status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            st.markdown(f'<div class="user-info" style="justify-content: flex-end;"><span>{st.session_state.user.email}</span><span>{status_icon}</span></div>', unsafe_allow_html=True)
-            if st.button("🚪 Вийти", key="logout_top", use_container_width=False):
-                logout()
+            col_email, col_status, col_logout = st.columns([0.35, 0.35, 0.3])
+            with col_email:
+                st.markdown(f"<div style='text-align: right; font-size: 0.9rem;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
+            with col_status:
+                st.markdown(f"<div style='text-align: right; font-size: 0.9rem;'>{status_icon}</div>", unsafe_allow_html=True)
+            with col_logout:
+                if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
+                    logout()
         else:
-            # Незалогінений – кнопки логін / реєстрація
-            col_btn1, col_btn2, _ = st.columns([1, 1, 2])
+            # Незалогінений – дві маленькі кнопки праворуч
+            col_btn1, col_btn2 = st.columns([0.5, 0.5])
             with col_btn1:
+                st.markdown('<style>.small-login-btn button { font-size: 0.8rem; padding: 0.2rem 0.5rem; }</style>', unsafe_allow_html=True)
                 if st.button("🔑 Увійти", key="login_top", use_container_width=True):
                     st.session_state.show_login_dialog = True
             with col_btn2:
@@ -795,8 +798,6 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
-        # === ЗМІНА: видалено напис "📥 Завантаження даних" ===
-        # st.subheader("📥 Завантаження даних")  # закоментовано
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
