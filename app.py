@@ -1,5 +1,5 @@
 # ==============================================================================
-# КАЛЬКУЛЯТОР ПОДАТКІВ FIFO — СУЧАСНИЙ ДИЗАЙН
+# КАЛЬКУЛЯТОР ПОДАТКІВ FIFO — ВСІ ТАБЛИЦІ ПОКАЗУЮТЬ ВСІ РЯДКИ (height="content")
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -19,137 +19,34 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — СУЧАСНИЙ ДИЗАЙН (шрифти, тіні, анімації, кольори)
+# CSS — гарантуємо повну висоту контенту + прибираємо зайвий верхній відступ
 # ==============================================================================
 st.markdown("""
 <style>
-    /* Підключення сучасного шрифту */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
-
-    * {
-        font-family: 'Inter', sans-serif;
+    .stDataFrame, div[data-testid="stDataFrame"] {
+        max-height: none !important;
+        height: auto !important;
     }
-
-    /* Загальний фон і відступи */
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e9eef5 100%);
+    .ag-theme-streamlit {
+        max-height: none !important;
+        height: auto !important;
     }
-    .main {
-        background-color: transparent;
+    .ag-theme-streamlit .ag-body-viewport,
+    .ag-theme-streamlit .ag-center-cols-viewport {
+        max-height: none !important;
+        height: auto !important;
     }
+    /* Зменшуємо верхній відступ, але не ховаємо header */
+    .main > div:first-child {
+        padding-top: 0rem;
+    }
+    /* додає невеликий відступ зверху, щоб вміст не прилипав до верхнього краю.
     .block-container {
-        padding: 2rem 2rem 3rem 2rem;
+        padding-top: 1rem;
     }
-
-    /* Бокова панель */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        border-right: 1px solid rgba(0,0,0,0.05);
-        box-shadow: 4px 0 12px rgba(0,0,0,0.05);
-    }
-    [data-testid="stSidebar"] > div:first-child {
-        padding: 1.5rem 1rem;
-    }
-
-    /* Заголовки */
-    h1, h2, h3, h4 {
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        color: #1a2c3e;
-    }
-
-    /* Кнопки */
-    .stButton button {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .stButton button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 12px rgba(37,99,235,0.2);
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    }
-
-    /* Вкладки (кастомний стиль) */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        background-color: transparent;
-        border-bottom: 2px solid #e2e8f0;
-        padding: 0 0.5rem;
-    }
-    .stTabs [data-baseweb="tab"] {
-        font-weight: 500;
-        padding: 0.5rem 0rem;
-        color: #64748b;
-        border-radius: 0;
-        background-color: transparent;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #3b82f6;
-        border-bottom: 2px solid #3b82f6;
-        margin-bottom: -2px;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #1e293b;
-    }
-
-    /* Таблиці */
-    .stDataFrame {
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .stDataFrame table {
-        font-size: 0.85rem;
-    }
-    .stDataFrame th {
-        background-color: #f1f5f9;
-        font-weight: 600;
-        color: #0f172a;
-    }
-    .stDataFrame tr:hover {
-        background-color: #f8fafc;
-    }
-
-    /* Картки для окремих блоків */
-    .custom-card {
-        background: white;
-        border-radius: 24px;
-        padding: 1.2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 6px 14px rgba(0,0,0,0.05);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .custom-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-    }
-
-    /* Повідомлення */
-    .stAlert {
-        border-radius: 16px;
-        border-left: 4px solid #3b82f6;
-        background-color: #eff6ff;
-    }
-
-    /* Селектор року */
-    .year-selector-container {
-        background: white;
-        border-radius: 20px;
-        padding: 0.2rem 1.2rem;
-        margin: 0.5rem 0 1.5rem 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        border: 1px solid #eef2f6;
-    }
-    .year-label {
-        font-weight: 600;
-        color: #334155;
-        margin-right: 1rem;
+    /* Приховуємо верхню панель */
+    header[data-testid="stHeader"] {
+        display: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -189,18 +86,26 @@ def style_dataframe(df, tab_name):
     Для PRO-користувачів використовуємо, для free – повертаємо оригінал без стилів.
     """
     if not st.session_state.get("is_pro", False):
-        return df
+        return df  # free — без стилів, дані вже замасковані
 
     if df is None or df.empty:
         return df
 
+    # Список колонок, які мають форматуватися з 4 знаками після коми
     cols_4dec = ["Kurs NBP", "Kurs", "Kurs (USD)", "Koszt sredni", "Kurs NBP (D-1)"]
+    # Список колонок-відсотків
     cols_percent = ["Stawka zr. %", "Waga %", "Udział %"]
 
+    # Створюємо Styler
     styler = df.style
+
+    # Застосовуємо центрування до всіх комірок
     styler = styler.set_properties(**{'text-align': 'center'})
 
+    # Визначаємо числові колонки (крім тих, що вже є рядками)
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+
+    # Форматування для кожної колонки
     for col in numeric_cols:
         if col in cols_4dec:
             styler = styler.format({col: "{:,.4f}"})
@@ -208,6 +113,7 @@ def style_dataframe(df, tab_name):
             styler = styler.format({col: "{:.2%}"})
         else:
             styler = styler.format({col: "{:,.2f}"})
+
     return styler
 
 # ==============================================================================
@@ -795,7 +701,7 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# SIDEBAR (СУЧАСНИЙ ДИЗАЙН)
+# SIDEBAR (твій оригінальний код) — ВИДАЛЕНО НАПИС "📥 Завантаження даних"
 # ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
@@ -808,6 +714,8 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
+        # === ЗМІНА: видалено напис "📥 Завантаження даних" ===
+        # st.subheader("📥 Завантаження даних")  # закоментовано
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
@@ -851,7 +759,7 @@ def render_sidebar():
     return st.session_state.my_files
 
 # ==============================================================================
-# RENDER ФУНКЦІЇ — вивід вкладок (з оновленим стилем)
+# RENDER ФУНКЦІЇ — вивід вкладок з обмеженнями для FREE + нове форматування
 # ==============================================================================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
@@ -909,7 +817,7 @@ def render_Tax_Detailed_Report_Tab():
     for block in blocks_to_show:
         if block.empty: continue
         if st.session_state.get("is_pro", False):
-            limited_block = apply_free_limits(block, "Tax_Detailed_Report")
+            limited_block = apply_free_limits(block, "Tax_Detailed_Report")  # поверне оригінал
             styled = style_dataframe(limited_block, "Tax_Detailed_Report")
             styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
             st.dataframe(styled, use_container_width=True, height="content")
@@ -1299,7 +1207,7 @@ def render_PIT38_Tab():
             )
 
 # ==============================================================================
-# recalculate_reports + селектор року (СУЧАСНИЙ ДИЗАЙН)
+# recalculate_reports + селектор року + головний оркестратор вкладок
 # ==============================================================================
 def recalculate_reports(selected_year):
     if st.session_state.fifo_df is None or st.session_state.finance_df is None:
@@ -1354,27 +1262,29 @@ def render_global_year_selector():
         new_year = st.session_state.global_year
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            st.session_state.global_year = st.session_state.selected_year
+            st.session_state.global_year = st.session_state.selected_year  # повертаємо назад
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Сучасний блок для селектора року
-    with st.container():
-        st.markdown('<div class="year-selector-container">', unsafe_allow_html=True)
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.markdown('<div class="year-label">Wybierz rok:</div>', unsafe_allow_html=True)
-        with col2:
-            st.selectbox(
-                label="",
-                options=year_options,
-                key="global_year",
-                index=current_index,
-                on_change=on_year_change,
-                label_visibility="collapsed"
-            )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Мінімальний відступ зверху, щоб не прилипало до вкладок
+    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
+    
+    # Дві колонки: напис і селектор дуже близько один до одного
+    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="xxsmall")
+    
+    with col_label:
+        st.markdown("**Wybierz rok:**")
+    
+    with col_selector:
+        st.selectbox(
+            label="",
+            options=year_options,
+            key="global_year",
+            index=current_index,
+            on_change=on_year_change,
+            label_visibility="collapsed"
+        )
 
 def render_main_tabs():
     tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
@@ -1408,12 +1318,15 @@ def render_main_tabs():
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
 
+# ====================== АВТОРИЗАЦІЯ ======================
 require_auth()
 check_subscription_status()
 
+# ====================== БОКОВА ПАНЕЛЬ ======================
 show_auth_status_and_logout()
 uploaded_files = render_sidebar()
 
+# ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
     render_global_year_selector()
     render_main_tabs()
