@@ -21,11 +21,10 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — приховуємо стандартний заголовок, гамбургер, залишаємо сайдбар завжди видимим
+# CSS — гарантуємо повну висоту контенту + ховаємо кнопку згортання сайдбару
 # ==============================================================================
 st.markdown("""
 <style>
-    /* Забезпечуємо повну висоту таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -39,34 +38,35 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-
-    /* Приховуємо весь стандартний заголовок (разом із гамбургером) */
+    /* Приховуємо стандартний заголовок (разом із гамбургером) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
-
-    /* Прибираємо зайві відступи, щоб контент піднявся */
+    /* Приховуємо кнопку згортання сайдбару (трикутник) */
+    [data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+    /* Прибираємо зайві відступи */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
         padding-top: 0rem !important;
     }
-
     /* Стилі для власної верхньої панелі */
     .custom-top-bar {
         background-color: #f0f2f6;
-        padding: 0.3rem 1rem;
+        padding: 0.5rem 1rem;
         border-bottom: 1px solid #ddd;
         margin-bottom: 1rem;
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
     }
-    /* Кнопки трохи менші */
-    .small-button button {
-        font-size: 0.9rem !important;
-        padding: 0.2rem 0.5rem !important;
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -724,39 +724,38 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — тільки кнопки справа
+# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — оновлена
 # ==============================================================================
 def render_top_bar():
-    # Створюємо HTML-обгортку для верхньої панелі
-    # Використовуємо columns для точного розташування
-    st.markdown('<div class="custom-top-bar">', unsafe_allow_html=True)
-    col_empty, col_buttons = st.columns([5, 1])
-    with col_empty:
-        pass  # порожній простір зліва
-    with col_buttons:
+    # Використовуємо columns для розташування: ліворуч порожньо (щоб зрушити вправо)
+    # або просто right-align через columns. Використаємо дві колонки: перша порожня, друга з контентом.
+    _, col_right = st.columns([0.7, 0.3])
+    
+    with col_right:
         if st.session_state.authenticated:
-            # Залогінений: email, статус, кнопка "Вийти"
+            # Залогінений – email, статус, кнопка вийти в одному рядку
             status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            st.markdown(f'<div style="display: flex; align-items: center; gap: 0.8rem; justify-content: flex-end;">'
-                        f'<span>{st.session_state.user.email}</span>'
-                        f'<span>{status_icon}</span>'
-                        f'<button onclick="document.querySelector(\'#logout_button\').click()" style="background: none; border: 1px solid #ccc; border-radius: 5px; padding: 0.2rem 0.5rem;">🚪 Вийти</button>'
-                        f'</div>', unsafe_allow_html=True)
-            # Справжня кнопка виходу (прихована, але буде спрацьовувати через JS)
-            if st.button("Вийти", key="logout_hidden", help="", use_container_width=False):
-                logout()
-            # Сховати справжню кнопку, залишити стилізовану (але для простоти можна зробити простіше)
-            # Натомість зробимо простіше: використаємо звичайний st.button з параметром key
+            col_email, col_status, col_logout = st.columns([1, 1, 0.8])
+            with col_email:
+                st.markdown(f"**{st.session_state.user.email}**")
+            with col_status:
+                st.markdown(f"**{status_icon}**")
+            with col_logout:
+                if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
+                    logout()
         else:
-            # Незалогінений: дві кнопки
-            col_btn1, col_btn2 = st.columns(2)
+            # Незалогінений – кнопки входу та реєстрації (менші)
+            col_btn1, col_btn2 = st.columns([1, 1])
             with col_btn1:
                 if st.button("🔑 Увійти", key="login_top", use_container_width=True):
                     st.session_state.show_login_dialog = True
             with col_btn2:
                 if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
                     st.session_state.show_register_dialog = True
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Викликаємо модальні вікна (вони відобразяться, якщо прапорці встановлені)
+    show_login_modal()
+    show_register_modal()
 
 # ==============================================================================
 # ІНСТРУКЦІЯ (МОДАЛЬНЕ ВІКНО)
@@ -786,7 +785,7 @@ def show_instructions_modal():
         instructions()
 
 # ==============================================================================
-# SIDEBAR (без статусу, з кнопкою інструкції, без гамбургера)
+# SIDEBAR (без статусу, з кнопкою інструкції)
 # ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
