@@ -37,22 +37,32 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Залишаємо лише гамбургер-меню, ховаємо решту заголовка */
+
+    /* Налаштовуємо заголовок */
     header[data-testid="stHeader"] {
-        background-color: transparent;
-        box-shadow: none;
-        height: 2.5rem;           /* зменшуємо висоту, якщо потрібно */
+        background: transparent !important;
+        box-shadow: none !important;
+        height: 2rem !important;
+        min-height: 2rem !important;
     }
-    /* Ховаємо кнопку "Deploy" та меню з трьома крапками */
-    header[data-testid="stHeader"] button:not([data-testid="baseButton-header"]) {
+
+    /* Ховаємо всі кнопки, крім першої (гамбургера) */
+    header[data-testid="stHeader"] button {
         display: none !important;
     }
-    /* Можна прибрати зайвий простір зверху, щоб контент піднявся */
+    header[data-testid="stHeader"] button:first-child {
+        display: flex !important;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Зсуваємо вміст вгору, компенсуючи висоту заголовка */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
-        padding-top: 0rem;
+        padding-top: 0rem !important;
+        margin-top: -0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
