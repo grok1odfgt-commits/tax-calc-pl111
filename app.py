@@ -1225,6 +1225,39 @@ def render_PIT38_Tab():
 # ==============================================================================
 # recalculate_reports + селектор року + головний оркестратор вкладок
 # ==============================================================================
+def recalculate_reports(selected_year):
+    if st.session_state.fifo_df is None or st.session_state.finance_df is None:
+        return
+    blocks, sales_sum, profit_sum = Module5_FIFO_Detailed_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.report_blocks = blocks
+    st.session_state.sales_summary = sales_sum
+    st.session_state.profit_summary = profit_sum
+    main_df, sales_sum6, profit_sum6 = Module6_FIFO_Summary_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.summary_df = main_df
+    st.session_state.summary_sales = sales_sum6
+    st.session_state.summary_profit = profit_sum6
+    d_main, d_val, d_pln = Module7_Dividend_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.dividend_df = d_main
+    st.session_state.dividend_summary_val = d_val
+    st.session_state.dividend_summary_pln = d_pln
+    i_main, i_val, i_pln = Module8_Interest_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.interest_df = i_main
+    st.session_state.interest_summary_val = i_val
+    st.session_state.interest_summary_pln = i_pln
+    c_main, c_sum = Module9_Cash_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.cash_df = c_main
+    st.session_state.cash_summary = c_sum
+    st.session_state.transactions_df = Module10_Transactions_Report(st.session_state.fifo_df, selected_year)
+    portfolio_df, curr_percent, curr_value = Module11_Portfolio(st.session_state.fifo_df, st.session_state.rates_data)
+    st.session_state.portfolio_df = portfolio_df
+    st.session_state.portfolio_currency_percent = curr_percent
+    st.session_state.portfolio_currency_value = curr_value
+    akcje, dyw, zg = Module12_PIT38_Report(st.session_state.fifo_df, st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.pit38_akcje = akcje
+    st.session_state.pit38_dywidendy = dyw
+    st.session_state.pit38_zg = zg
+    st.session_state.selected_year = selected_year
+
 def render_global_year_selector():
     if st.session_state.fifo_df is None and st.session_state.finance_df is None:
         return
@@ -1250,10 +1283,10 @@ def render_global_year_selector():
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Додаємо невеликий відступ зверху, щоб не прилипало до краю
+    # Додаємо невеликий відступ зверху
     st.markdown('<div style="margin-top: 5px;"></div>', unsafe_allow_html=True)
     
-    # Дві колонки: перша тільки для напису (вузька), друга для селектора
+    # Дві колонки: напис і селектор поруч
     col_label, col_selector = st.columns([0.2, 0.8])
     with col_label:
         st.markdown("**Wybierz rok:**")
@@ -1295,9 +1328,67 @@ def render_main_tabs():
             elif name == "PIT38": render_PIT38_Tab()
 
 # ==============================================================================
+# SIDEBAR (твій оригінальний код) — ВИДАЛЕНО НАПИС "📥 Завантаження даних"
+# ==============================================================================
+def update_file_list():
+    new_files = st.session_state.hidden_uploader
+    if new_files:
+        for f in new_files:
+            if f.name not in [file.name for file in st.session_state.my_files]:
+                st.session_state.my_files.append(f)
+
+def render_sidebar():
+    with st.sidebar:
+        st.title("🧮 Калькулятор податків FIFO")
+        st.markdown("---")
+        # === ЗМІНА: видалено напис "📥 Завантаження даних" ===
+        # st.subheader("📥 Завантаження даних")  # закоментовано
+        st.markdown("""
+        <style>
+            div[data-testid="stFileUploader"] { display: none !important; }
+            div[data-testid="stSidebar"] .stButton button { width: 100% !important; }
+            section[data-testid="stSidebar"] p { font-size: 15px !important; line-height: 1.4 !important; }
+        </style>
+        """, unsafe_allow_html=True)
+        if "my_files" not in st.session_state:
+            st.session_state.my_files = []
+        st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader",
+                         label_visibility="collapsed", on_change=update_file_list)
+        if st.button("📁 Додати файли (CSV)", type="primary", use_container_width=True):
+            components.html("""
+                <script>
+                    window.parent.document.querySelector('input[type="file"]').click();
+                </script>
+            """, height=0)
+        if st.session_state.my_files:
+            st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
+            for i, file in enumerate(st.session_state.my_files):
+                col1, col2 = st.columns([0.78, 0.22])
+                size_kb = round(file.size / 1024, 1)
+                col1.write(f"📄 **{file.name}** \n({size_kb} KB)")
+                if col2.button("❌", key=f"del_{i}"):
+                    st.session_state.my_files.pop(i)
+                    st.rerun()
+            if st.button("🗑️ Очистити всі", use_container_width=True):
+                st.session_state.my_files.clear()
+                st.rerun()
+            if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
+                with st.spinner("Виконується повний розрахунок за всі роки..."):
+                    st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
+                    st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
+                    st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
+                    st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
+                    recalculate_reports("Wszystkie lata")
+                st.success("✅ Усе розраховано!")
+                st.rerun()
+        else:
+            st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
+    return st.session_state.my_files
+
+# ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
 
 # ====================== АВТОРИЗАЦІЯ ======================
 require_auth()
