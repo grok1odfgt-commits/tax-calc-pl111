@@ -27,22 +27,42 @@ def init_auth_session():
     if "subscription_plan" not in st.session_state:
         st.session_state.subscription_plan = "free"
 
+# ====================== ВЕРХНЯ ПАНЕЛЬ (горизонтальна) ======================
+def render_top_bar():
+    """Рендерить горизонтальну панель з кнопками входу/реєстрації або інформацією про користувача."""
+    init_auth_session()
+
+    # Використовуємо 4 колонки: лого (або пусто), кнопки, пусто
+    col_logo, col_buttons, col_spacer = st.columns([1, 2, 1])
+    with col_buttons:
+        if not st.session_state.authenticated:
+            # Кнопки для неавторизованого користувача
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔑 Увійти", use_container_width=True):
+                    st.session_state.show_login = True
+            with col2:
+                if st.button("📝 Реєстрація", use_container_width=True):
+                    st.session_state.show_register = True
+        else:
+            # Інформація про авторизованого користувача
+            status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+            st.markdown(f"**{st.session_state.user.email}** &nbsp;&nbsp; {status}")
+            if st.button("🚪 Вийти", use_container_width=True):
+                supabase.auth.sign_out()
+                st.session_state.clear()
+                st.rerun()
+
 # ====================== ОСНОВНА ФУНКЦІЯ: ПЕРЕВІРКА АВТОРИЗАЦІЇ ======================
 def require_auth():
+    """Показує модальні форми логіну/реєстрації, якщо користувач не увійшов."""
     init_auth_session()
     if st.session_state.authenticated:
         return
 
-    st.markdown("---")
-    col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
-    with col2:
-        if st.button("🔑 Увійти", use_container_width=True):
-            st.session_state.show_login = True
-    with col3:
-        if st.button("📝 Реєстрація", use_container_width=True):
-            st.session_state.show_register = True
-    st.markdown("---")
+    # Більше немає кнопок у тілі сторінки – вони перенесені у верхню панель
 
+    # === МОДАЛЬНЕ ВІКНО ЛОГІНУ ===
     if st.session_state.get("show_login", False):
         with st.form("login_form"):
             st.subheader("🔑 Увійти в акаунт")
@@ -63,6 +83,7 @@ def require_auth():
                 except Exception as auth_error:
                     st.error(f"Помилка входу: {auth_error}")
 
+    # === МОДАЛЬНЕ ВІКНО РЕЄСТРАЦІЇ ===
     if st.session_state.get("show_register", False):
         with st.form("register_form"):
             st.subheader("📝 Створити новий акаунт")
@@ -76,6 +97,7 @@ def require_auth():
                 except Exception as e:
                     st.error(f"Помилка: {e}")
 
+    # Якщо не увійшов – зупиняємо весь додаток (показуємо тільки форму)
     st.info("👋 Для користування калькулятором потрібно увійти або зареєструватися")
     st.stop()
 
@@ -117,14 +139,12 @@ def apply_free_limits(df, tab_name):
     Для PRO повертає оригінал.
     """
     if st.session_state.is_pro:
-        return df  # PRO — повний доступ
+        return df
 
     if df is None or df.empty:
         return df
 
     df = df.copy()
-
-    # Ліміти для різних вкладок
     limits = {
         "Tax_Detailed_Report": 5,
         "Tax_Summary_Report": 5,
@@ -134,7 +154,6 @@ def apply_free_limits(df, tab_name):
 
     if tab_name in limits:
         limit = limits[tab_name]
-        # Якщо рядків більше ніж ліміт, замінюємо всі значення в рядках після ліміту на "X"
         if len(df) > limit:
             for i in range(limit, len(df)):
                 for col in df.columns:
@@ -142,26 +161,18 @@ def apply_free_limits(df, tab_name):
         return df
 
     elif tab_name == "PIT38":
-        # Для PIT38 маскуємо тільки колонку зі значеннями (припускаємо, що вона називається "Wartosc")
         if "Wartosc" in df.columns:
             df["Wartosc"] = "X"
         return df
 
-    # Для інших вкладок (Transactions, Portfolio, Cash) повертаємо без змін
     return df
 
-# ====================== КНОПКА ВИХОДУ + СТАТУС ======================
+# ====================== КНОПКА ВИХОДУ + СТАТУС (ЗАЛИШЕНО ДЛЯ СУМІСНОСТІ, АЛЕ НЕ ВИКОРИСТОВУЄТЬСЯ) ======================
 def show_auth_status_and_logout():
-    if st.session_state.authenticated:
-        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free (дані замасковані)"
-        st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
-        st.sidebar.markdown(f"**Статус:** {status}")
-        if st.sidebar.button("🚪 Вийти"):
-            supabase.auth.sign_out()
-            st.session_state.clear()
-            st.rerun()
+    """Більше не використовується, оскільки статус тепер у верхній панелі."""
+    pass
 
-# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ (використовується для вибору року) ======================
+# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ ======================
 def require_pro_for_feature(feature_name=""):
     """Показує попередження, якщо користувач не PRO, але не зупиняє виконання (тільки для інтерактивних дій)"""
     check_subscription_status()
