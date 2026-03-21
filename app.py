@@ -41,9 +41,9 @@ st.markdown("""
         padding-top: 0rem;
     }
     /* додає невеликий відступ зверху, щоб вміст не прилипав до верхнього краю.
-    .block-container {
-        padding-top: 1rem;
-    }
+    /* .block-container {
+     /*    padding-top: 1rem;
+    /* }
     /* Приховуємо верхню панель */
     header[data-testid="stHeader"] {
         display: none;
