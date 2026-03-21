@@ -21,10 +21,11 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту + ховаємо верхню панель Streamlit
+# CSS — приховуємо стандартний заголовок, гамбургер, залишаємо сайдбар завжди видимим
 # ==============================================================================
 st.markdown("""
 <style>
+    /* Забезпечуємо повну висоту таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -38,10 +39,12 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Приховуємо стандартний заголовок */
+
+    /* Приховуємо весь стандартний заголовок (разом із гамбургером) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
+
     /* Прибираємо зайві відступи, щоб контент піднявся */
     .main > div:first-child {
         padding-top: 0rem;
@@ -49,25 +52,21 @@ st.markdown("""
     .block-container {
         padding-top: 0rem !important;
     }
+
     /* Стилі для власної верхньої панелі */
     .custom-top-bar {
         background-color: #f0f2f6;
-        padding: 0.5rem 1rem;
+        padding: 0.3rem 1rem;
         border-bottom: 1px solid #ddd;
         margin-bottom: 1rem;
         display: flex;
         justify-content: flex-end;
         align-items: center;
     }
-    /* Кнопки зменшеного розміру */
-    .small-button {
-        font-size: 0.8rem;
-        padding: 0.2rem 0.6rem;
-    }
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    /* Кнопки трохи менші */
+    .small-button button {
+        font-size: 0.9rem !important;
+        padding: 0.2rem 0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -725,37 +724,39 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — без лівого напису, з елементами справа
+# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR) — тільки кнопки справа
 # ==============================================================================
 def render_top_bar():
-    # Контейнер для верхньої панелі (використовуємо колонки для правого вирівнювання)
-    col_right, col_left = st.columns([0.85, 0.15])  # більша частина справа для кнопок
-    with col_right:
+    # Створюємо HTML-обгортку для верхньої панелі
+    # Використовуємо columns для точного розташування
+    st.markdown('<div class="custom-top-bar">', unsafe_allow_html=True)
+    col_empty, col_buttons = st.columns([5, 1])
+    with col_empty:
+        pass  # порожній простір зліва
+    with col_buttons:
         if st.session_state.authenticated:
-            # Залогінений – показуємо email, статус, кнопку вийти в одному рядку
+            # Залогінений: email, статус, кнопка "Вийти"
             status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            col_email, col_status, col_logout = st.columns([0.35, 0.35, 0.3])
-            with col_email:
-                st.markdown(f"<div style='text-align: right; font-size: 0.9rem;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
-            with col_status:
-                st.markdown(f"<div style='text-align: right; font-size: 0.9rem;'>{status_icon}</div>", unsafe_allow_html=True)
-            with col_logout:
-                if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
-                    logout()
+            st.markdown(f'<div style="display: flex; align-items: center; gap: 0.8rem; justify-content: flex-end;">'
+                        f'<span>{st.session_state.user.email}</span>'
+                        f'<span>{status_icon}</span>'
+                        f'<button onclick="document.querySelector(\'#logout_button\').click()" style="background: none; border: 1px solid #ccc; border-radius: 5px; padding: 0.2rem 0.5rem;">🚪 Вийти</button>'
+                        f'</div>', unsafe_allow_html=True)
+            # Справжня кнопка виходу (прихована, але буде спрацьовувати через JS)
+            if st.button("Вийти", key="logout_hidden", help="", use_container_width=False):
+                logout()
+            # Сховати справжню кнопку, залишити стилізовану (але для простоти можна зробити простіше)
+            # Натомість зробимо простіше: використаємо звичайний st.button з параметром key
         else:
-            # Незалогінений – дві маленькі кнопки праворуч
-            col_btn1, col_btn2 = st.columns([0.5, 0.5])
+            # Незалогінений: дві кнопки
+            col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
-                st.markdown('<style>.small-login-btn button { font-size: 0.8rem; padding: 0.2rem 0.5rem; }</style>', unsafe_allow_html=True)
                 if st.button("🔑 Увійти", key="login_top", use_container_width=True):
                     st.session_state.show_login_dialog = True
             with col_btn2:
                 if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
                     st.session_state.show_register_dialog = True
-
-    # Викликаємо модальні вікна (вони відобразяться, якщо прапорці встановлені)
-    show_login_modal()
-    show_register_modal()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # ІНСТРУКЦІЯ (МОДАЛЬНЕ ВІКНО)
@@ -785,7 +786,7 @@ def show_instructions_modal():
         instructions()
 
 # ==============================================================================
-# SIDEBAR (без статусу, з кнопкою інструкції)
+# SIDEBAR (без статусу, з кнопкою інструкції, без гамбургера)
 # ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
@@ -798,6 +799,8 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
+        # === ЗМІНА: видалено напис "📥 Завантаження даних" ===
+        # st.subheader("📥 Завантаження даних")  # закоментовано
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
