@@ -23,6 +23,7 @@ from auth import (
 # ==============================================================================
 st.markdown("""
 <style>
+    /* Забезпечуємо повну висоту таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -36,17 +37,17 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Зменшуємо верхній відступ, але не ховаємо header */
+    /* Приховуємо верхню панель (з анімацією завантаження) */
+    header[data-testid="stHeader"] {
+        display: none;
+    }
+    /* Видаляємо всі верхні відступи контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
-    /* додає невеликий відступ зверху, щоб вміст не прилипав до верхнього краю.
-    /* .block-container {
-     /*    padding-top: 1rem;
-    /* }
-    /* Приховуємо верхню панель */
-    header[data-testid="stHeader"] {
-        display: none;
+    .block-container {
+        padding-top: 0rem;
+        margin-top: -0.5rem;  /* зсуваємо ще трохи, якщо залишився зазор */
     }
 </style>
 """, unsafe_allow_html=True)
