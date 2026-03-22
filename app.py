@@ -11,15 +11,17 @@ import streamlit.components.v1 as components
 
 # ====================== ІМПОРТ АВТОРИЗАЦІЇ ======================
 from auth import (
-    require_auth,
-    show_auth_status_and_logout,
-    require_pro_for_feature,
+    init_auth_session,
+    check_subscription_status,
     apply_free_limits,
-    check_subscription_status
+    require_pro_for_feature,
+    show_login_modal,
+    show_register_modal,
+    logout
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту + прибираємо зайвий верхній відступ
+# CSS — гарантуємо повну висоту контенту + ховаємо кнопку згортання сайдбару
 # ==============================================================================
 st.markdown("""
 <style>
@@ -36,12 +38,40 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Зменшуємо верхній відступ, але не ховаємо header */
+    /* Приховуємо стандартний заголовок Streamlit */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    /* Прибираємо зайві відступи, щоб контент піднявся */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
-        padding-top: 1rem;
+        padding-top: 0rem !important;
+    }
+    /* Стилі для власної верхньої панелі */
+    .custom-top-bar {
+        background-color: #f0f2f6;
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid #ddd;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .site-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #1e466e;
+    }
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    /* Ховаємо кнопку згортання сайдбару (гамбургер) */
+    button[data-testid="baseButton-header"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -49,6 +79,9 @@ st.markdown("""
 # ==============================================================================
 # ІНІЦІАЛІЗАЦІЯ СЕСІЙНОГО СТАНУ
 # ==============================================================================
+init_auth_session()
+check_subscription_status()
+
 keys = [
     'broker_data', 'rates_data', 'fifo_df', 'finance_df', 'report_blocks',
     'sales_summary', 'profit_summary', 'summary_df', 'summary_sales', 'summary_profit',
@@ -696,7 +729,64 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
     return df_akcje, df_dyw, zg_group
 
 # ==============================================================================
-# SIDEBAR (твій оригінальний код) — ВИДАЛЕНО НАПИС "📥 Завантаження даних"
+# ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR)
+# ==============================================================================
+def render_top_bar():
+    # Верхня панель – використовуємо columns для розташування
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown('<div class="site-title">🧮 FIFO Tax Calculator</div>', unsafe_allow_html=True)
+    with col2:
+        # Вирівнюємо праворуч за допомогою колонок
+        if st.session_state.authenticated:
+            # Залогінений – показуємо email, статус, кнопку вийти
+            status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+            st.markdown(f'<div class="user-info" style="justify-content: flex-end;"><span>{st.session_state.user.email}</span><span>{status_icon}</span></div>', unsafe_allow_html=True)
+            if st.button("🚪 Вийти", key="logout_top", use_container_width=False):
+                logout()
+        else:
+            # Незалогінений – кнопки логін / реєстрація
+            col_btn1, col_btn2, _ = st.columns([1, 1, 2])
+            with col_btn1:
+                if st.button("🔑 Увійти", key="login_top", use_container_width=True):
+                    st.session_state.show_login_dialog = True
+            with col_btn2:
+                if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
+                    st.session_state.show_register_dialog = True
+
+    # Викликаємо модальні вікна (вони відобразяться, якщо прапорці встановлені)
+    show_login_modal()
+    show_register_modal()
+
+# ==============================================================================
+# ІНСТРУКЦІЯ (МОДАЛЬНЕ ВІКНО)
+# ==============================================================================
+def show_instructions_modal():
+    @st.dialog("📘 Інструкція користувача")
+    def instructions():
+        st.markdown("""
+        ### Як користуватися калькулятором FIFO
+
+        1. **Завантажте файли брокера** (CSV) у сайдбарі.
+        2. Натисніть **«Розрахувати все»**.
+        3. Після обробки з'являться вкладки з різними звітами.
+
+        **Важливо:**
+        - Для перегляду даних у повному обсязі потрібна PRO-підписка.
+        - Без входу ви можете лише завантажувати файли, але розрахунок не запуститься.
+        - Вхід/реєстрація відбуваються через кнопки у верхній панелі.
+
+        **Питання?** Звертайтесь: support@example.com
+        """)
+        if st.button("Закрити", key="close_instructions"):
+            st.session_state.show_instructions = False
+            st.rerun()
+
+    if st.session_state.get("show_instructions", False):
+        instructions()
+
+# ==============================================================================
+# SIDEBAR (без статусу, з кнопкою інструкції)
 # ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
@@ -741,16 +831,25 @@ def render_sidebar():
                 st.session_state.my_files.clear()
                 st.rerun()
             if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
-                with st.spinner("Виконується повний розрахунок за всі роки..."):
-                    st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
-                    st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
-                    st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
-                    st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
-                    recalculate_reports("Wszystkie lata")
-                st.success("✅ Усе розраховано!")
-                st.rerun()
+                # Перевірка, чи залогінений користувач
+                if not st.session_state.authenticated:
+                    st.warning("⚠️ Будь ласка, увійдіть або зареєструйтеся, щоб виконати розрахунок.")
+                else:
+                    with st.spinner("Виконується повний розрахунок за всі роки..."):
+                        st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
+                        st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
+                        st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
+                        st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
+                        recalculate_reports("Wszystkie lata")
+                    st.success("✅ Усе розраховано!")
+                    st.rerun()
         else:
             st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
+        
+        st.markdown("---")
+        # Кнопка інструкції
+        if st.button("📘 Інструкція", use_container_width=True):
+            st.session_state.show_instructions = True
     return st.session_state.my_files
 
 # ==============================================================================
@@ -1257,20 +1356,15 @@ def render_global_year_selector():
         new_year = st.session_state.global_year
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            st.session_state.global_year = st.session_state.selected_year  # повертаємо назад
+            st.session_state.global_year = st.session_state.selected_year
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
     
-    # Мінімальний відступ зверху, щоб не прилипало до вкладок
-    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
-    
-    # Дві колонки: напис і селектор дуже близько один до одного
-    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="xxsmall")
-    
+    # Дві колонки: напис і селектор поруч
+    col_label, col_selector = st.columns([0.2, 0.8])
     with col_label:
         st.markdown("**Wybierz rok:**")
-    
     with col_selector:
         st.selectbox(
             label="",
@@ -1311,15 +1405,20 @@ def render_main_tabs():
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
 
 # ====================== АВТОРИЗАЦІЯ ======================
-require_auth()
+init_auth_session()
 check_subscription_status()
 
+# ====================== ВЕРХНЯ ПАНЕЛЬ ======================
+render_top_bar()
+
 # ====================== БОКОВА ПАНЕЛЬ ======================
-show_auth_status_and_logout()
 uploaded_files = render_sidebar()
+
+# ====================== МОДАЛЬНЕ ВІКНО ІНСТРУКЦІЇ ======================
+show_instructions_modal()
 
 # ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
