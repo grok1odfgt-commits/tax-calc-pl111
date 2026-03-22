@@ -50,14 +50,13 @@ st.markdown("""
         display: none !important;
     }
 
-    /* Повертаємо видимість усіх кнопок у сайдбарі */
-    section[data-testid="stSidebar"] button,
-    section[data-testid="stSidebar"] .stButton button {
-        display: block !important;
-        visibility: visible !important;
+    /* Піднімаємо вміст сайдбару вище (зменшуємо верхній відступ) */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.5rem !important;
+        margin-top: -0.5rem !important;  /* трохи піднімаємо весь контент */
     }
 
-    /* Прибираємо зайві відступи зверху */
+    /* Прибираємо зайві відступи зверху основного контенту */
     .main > div:first-child {
         padding-top: 0.5rem !important;
     }
