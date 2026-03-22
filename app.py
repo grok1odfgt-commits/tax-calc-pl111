@@ -9,7 +9,7 @@ from collections import defaultdict
 import io
 import streamlit.components.v1 as components
 
-# ====================== ІМПОРТ АВТОРИЗАЦІЇ ======================
+# Імпорт авторизації (залишаємо)
 from auth import (
     require_auth,
     show_auth_status_and_logout,
@@ -19,111 +19,144 @@ from auth import (
 )
 
 # ────────────────────────────────────────────────────────────────
-# ЕКСПЕРИМЕНТ: топбар без трьох крапок + повернута кнопка сайдбару
+# ФОРСОВАНО ХОВАЄМО ВСЕ СТАНДАРТНЕ МЕНЮ ТА АНІМАЦІЮ
 # ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="FIFO Tax Calculator",
     layout="wide",
-    initial_sidebar_state="expanded",          # ← завжди відкритий при старті
+    initial_sidebar_state="expanded",  # завжди відкритий при старті
     menu_items={"Get help": None, "Report a bug": None, "About": None}
 )
 
+# Дуже агресивний CSS — ховаємо майже весь header, крім потрібного
 st.markdown("""
 <style>
-    /* Ховаємо тільки три крапки, Deploy та анімацію спортсменів */
-    section[data-testid="stToolbar"],
-    div[data-testid="stToolbar"],
+    /* Повністю ховаємо стандартний toolbar, три крапки, Deploy, running animation */
+    [data-testid="stToolbar"],
     [data-testid="stAppToolbar"],
     [data-testid="stDecoration"],
-    button[data-testid^="stBaseButton-header"],
+    [data-testid="stAppViewContainer"] > header,
+    button[kind="header"],
     .stDeployButton,
+    .st-emotion-cache-1cpxqw2,
+    div[data-testid="stToolbar"] > div,
     div.stSpinner > div > svg,
-    [data-testid="stToolbar"] svg {
+    [data-testid="stSpinner"] svg,
+    section[data-testid="stSidebar"] + div > button {
         display: none !important;
     }
 
-    /* ПОВЕРТАЄМО кнопку розгортання/згортання сайдбару ліворуч */
+    /* Повертаємо кнопку сайдбару (стрілка) ліворуч */
     button[data-testid="stSidebarCollapseButton"],
-    button[aria-label="Collapse sidebar"],
-    button[aria-label="Open sidebar"],
-    [data-testid="collapsedControl"] {
+    button[aria-label*="sidebar"],
+    [data-testid="collapsedControl"],
+    [kind="primary"] button[aria-label*="sidebar"] {
         display: flex !important;
         position: fixed !important;
-        left: 12px !important;
-        top: 12px !important;
-        z-index: 9999 !important;
-        background: white !important;
-        border: 1px solid #ddd !important;
+        left: 10px !important;
+        top: 10px !important;
+        z-index: 99999 !important;
+        background: #f0f2f6 !important;
+        border: 1px solid #ccc !important;
         border-radius: 50% !important;
-        width: 42px !important;
-        height: 42px !important;
+        width: 44px !important;
+        height: 44px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
     }
 
-    /* Трохи піднімаємо контент */
-    .main > .block-container {
-        padding-top: 0.8rem !important;
-    }
-
-    /* Стиль для топбару з кнопками */
-    .stAppHeader {
-        height: 52px !important;
+    /* Робимо чистий топбар для наших кнопок */
+    header.stAppHeader,
+    .stApp > header {
+        height: 56px !important;
+        background: #f8f9fa !important;
+        border-bottom: 1px solid #e0e0e0 !important;
         padding: 8px 16px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Контент піднімаємо вгору */
+    .main > .block-container {
+        padding-top: 0.5rem !important;
+        margin-top: -10px !important;
     }
 </style>
 """, unsafe_allow_html=True)
-# ────────────────────────────────────────────────────────────────
 
-# ====================== МОДАЛЬНІ ВІКНА (st.dialog) ======================
-@st.dialog("🔑 Увійти")
-def login_dialog():
+# ────────────────────────────────────────────────────────────────
+# МОДАЛЬНІ ВІКНА ДЛЯ ВХОДУ / РЕЄСТРАЦІЇ (маленькі, над усім)
+# ────────────────────────────────────────────────────────────────
+@st.dialog("Увійти в акаунт")
+def login_modal():
+    st.markdown("### 🔑 Увійти")
     email = st.text_input("Email")
     password = st.text_input("Пароль", type="password")
-    if st.button("Увійти", type="primary"):
+    if st.button("Увійти", type="primary", use_container_width=True):
         try:
             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
             st.session_state.user = res.user
             st.session_state.authenticated = True
             check_subscription_status()
-            st.success("✅ Успішний вхід!")
+            st.success("Успішний вхід!")
             st.rerun()
         except Exception as e:
-            st.error(f"Помилка: {e}")
+            st.error(str(e))
 
-@st.dialog("📝 Реєстрація")
-def register_dialog():
+@st.dialog("Створити акаунт")
+def register_modal():
+    st.markdown("### 📝 Реєстрація")
     email = st.text_input("Email")
-    password = st.text_input("Пароль (мінімум 6 символів)", type="password")
-    if st.button("Зареєструватися", type="primary"):
+    password = st.text_input("Пароль (мін. 6 символів)", type="password")
+    if st.button("Зареєструватися", type="primary", use_container_width=True):
         try:
             supabase.auth.sign_up({"email": email, "password": password})
-            st.success("✅ Акаунт створено! Тепер увійдіть.")
+            st.success("Акаунт створено! Тепер увійдіть.")
             st.rerun()
         except Exception as e:
-            st.error(f"Помилка: {e}")
+            st.error(str(e))
 
-# ====================== ТОПБАР З АВТОРИЗАЦІЄЮ ======================
-def show_auth_in_header():
-    col1, col2, col3 = st.columns([6, 2, 2])
+# ────────────────────────────────────────────────────────────────
+# НАШ ВЛАСНИЙ ТОПБАР З КНОПКАМИ ПРАВОРУЧ
+# ────────────────────────────────────────────────────────────────
+col_left, col_right = st.columns([7, 3])
 
-    with col2:
-        if st.session_state.get("authenticated", False):
-            status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
-            st.markdown(f"**{st.session_state.user.email}**<br>{status}", unsafe_allow_html=True)
-            if st.button("🚪 Вийти", key="header_logout"):
-                supabase.auth.sign_out()
-                st.session_state.clear()
-                st.rerun()
-        else:
-            if st.button("🔑 Увійти", key="header_login"):
-                login_dialog()
-            if st.button("📝 Реєстрація", key="header_register"):
-                register_dialog()
+with col_right:
+    if st.session_state.get("authenticated", False):
+        status = "PRO" if st.session_state.get("is_pro", False) else "Free"
+        st.markdown(
+            f"<div style='text-align:right; font-size:14px; padding:6px 0;'>"
+            f"👤 {st.session_state.user.email.split('@')[0]} | {status}"
+            "</div>",
+            unsafe_allow_html=True
+        )
+        if st.button("🚪 Вийти", key="top_logout", use_container_width=True):
+            supabase.auth.sign_out()
+            st.session_state.clear()
+            st.rerun()
+    else:
+        col_login, col_reg = st.columns(2)
+        with col_login:
+            if st.button("Увійти", key="top_login"):
+                login_modal()
+        with col_reg:
+            if st.button("Реєстрація", key="top_register"):
+                register_modal()
 
-    with col3:
-        if not st.session_state.get("authenticated", False):
-            st.info("Увійдіть для повного доступу")
+# ==============================================================================
+# ДАЛІ ЙДЕ ТВІЙ ЗВИЧАЙНИЙ КОД — ІНІЦІАЛІЗАЦІЯ, CSS, МОДУЛІ, SIDEBAR тощо
+# ==============================================================================
+# (встав сюди весь свій оригінальний код починаючи з ініціалізації сесії,
+#  функцій show_no_data_message, style_dataframe і всіх модулів 1–12,
+#  sidebar, render функцій, recalculate_reports і запуску)
 
-show_auth_in_header()
+# Наприклад:
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+require_auth()  # якщо хочеш залишити перевірку, але вона вже не блокує
+check_subscription_status()
+
+# ... і весь інший код без змін ...
 
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 if "authenticated" not in st.session_state:
