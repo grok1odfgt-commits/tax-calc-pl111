@@ -21,7 +21,7 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту + ховаємо кнопку згортання сайдбару
+# CSS — гарантуємо повну висоту контенту + ховаємо верхню панель Streamlit
 # ==============================================================================
 st.markdown("""
 <style>
@@ -42,11 +42,7 @@ st.markdown("""
     header[data-testid="stHeader"] {
         display: none !important;
     }
-    /* Приховуємо кнопку згортання сайдбару (трикутник) */
-    [data-testid="stSidebarCollapseButton"] {
-        display: none !important;
-    }
-    /* Прибираємо зайві відступи */
+    /* Прибираємо зайві відступи, щоб контент піднявся */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -62,6 +58,11 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
+    }
+    .site-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #1e466e;
     }
     .user-info {
         display: flex;
@@ -727,22 +728,21 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
 # ВЕРХНЯ ПАНЕЛЬ (CUSTOM TOP BAR)
 # ==============================================================================
 def render_top_bar():
-    # Дві колонки: ліва – порожня (або мінімальна), права – контент
-    _, col_right = st.columns([0.6, 0.4])
-    with col_right:
+    # Верхня панель – використовуємо columns для розташування
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown('<div class="site-title">🧮 FIFO Tax Calculator</div>', unsafe_allow_html=True)
+    with col2:
+        # Вирівнюємо праворуч за допомогою колонок
         if st.session_state.authenticated:
-            # Залогінений: email та статус один під одним, кнопка вийти праворуч
-            col_info, col_logout = st.columns([0.7, 0.3])
-            with col_info:
-                st.markdown(f"**{st.session_state.user.email}**")
-                status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-                st.markdown(f"**{status_icon}**")
-            with col_logout:
-                if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
-                    logout()
+            # Залогінений – показуємо email, статус, кнопку вийти
+            status_icon = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+            st.markdown(f'<div class="user-info" style="justify-content: flex-end;"><span>{st.session_state.user.email}</span><span>{status_icon}</span></div>', unsafe_allow_html=True)
+            if st.button("🚪 Вийти", key="logout_top", use_container_width=False):
+                logout()
         else:
-            # Незалогінений: дві кнопки поряд
-            col_btn1, col_btn2 = st.columns([1, 1])
+            # Незалогінений – кнопки логін / реєстрація
+            col_btn1, col_btn2, _ = st.columns([1, 1, 2])
             with col_btn1:
                 if st.button("🔑 Увійти", key="login_top", use_container_width=True):
                     st.session_state.show_login_dialog = True
@@ -750,7 +750,7 @@ def render_top_bar():
                 if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
                     st.session_state.show_register_dialog = True
 
-    # Модальні вікна
+    # Викликаємо модальні вікна (вони відобразяться, якщо прапорці встановлені)
     show_login_modal()
     show_register_modal()
 
