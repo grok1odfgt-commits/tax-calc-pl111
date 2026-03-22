@@ -21,7 +21,7 @@ from auth import (
 )
 
 # ==============================================================================
-# CSS — гарантуємо повну висоту контенту + ховаємо кнопку згортання сайдбару
+# CSS — гарантуємо повну висоту контенту + ховаємо верхню панель Streamlit
 # ==============================================================================
 st.markdown("""
 <style>
@@ -38,28 +38,36 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Робимо header мінімальним і майже невидимим */
+    /* Приховуємо стандартний заголовок */
     header[data-testid="stHeader"] {
-        min-height: 0rem !important;
-        height: 0rem !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        display: none !important;
     }
-    /* Прибираємо зайві відступи зверху */
+    /* Прибираємо зайві відступи, щоб контент піднявся */
     .main > div:first-child {
-        padding-top: 0.5rem !important;
+        padding-top: 0rem;
     }
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0rem !important;
     }
-    /* Завжди показуємо сайдбар, навіть на мобілках */
-    section[data-testid="stSidebar"] {
-        display: block !important;
-        width: 300px !important;  /* або інша ширина */
+    /* Стилі для власної верхньої панелі */
+    .custom-top-bar {
+        background-color: #f0f2f6;
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid #ddd;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    /* Ховаємо кнопку закриття сайдбару (якщо треба) */
-    button[kind="header"] {
-        display: none !important;
+    .site-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #1e466e;
+    }
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1393,11 +1401,8 @@ def render_main_tabs():
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(
-    layout="wide",
-    page_title="FIFO Tax Calculator",
-    initial_sidebar_state="expanded"  # завжди відкритий
-)
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
+
 # ====================== АВТОРИЗАЦІЯ ======================
 init_auth_session()
 check_subscription_status()
