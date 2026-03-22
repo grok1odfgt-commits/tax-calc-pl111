@@ -45,15 +45,24 @@ st.markdown("""
         display: none !important;
     }
 
-    /* Приховуємо ТІЛЬКИ стрілочку закриття сайдбару (collapse arrow) */
-    [data-testid="collapsedControl"] {
+    /* Приховуємо стрілку згортання сайдбару (саме та, що при наведенні на край) */
+    [data-testid="stSidebarCollapsedControl"] {
         display: none !important;
     }
 
-    /* Піднімаємо вміст сайдбару вище (зменшуємо верхній відступ) */
+    /* Приховуємо повзунок прокрутки сайдбару, якщо він не потрібен */
+    section[data-testid="stSidebar"]::-webkit-scrollbar {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] {
+        -ms-overflow-style: none !important;  /* IE and Edge */
+        scrollbar-width: none !important;     /* Firefox */
+    }
+
+    /* Піднімаємо вміст сайдбару трохи вище (як ти просив) */
     section[data-testid="stSidebar"] > div:first-child {
         padding-top: 0.5rem !important;
-        margin-top: -0.5rem !important;  /* трохи піднімаємо весь контент */
+        margin-top: -0.5rem !important;
     }
 
     /* Прибираємо зайві відступи зверху основного контенту */
