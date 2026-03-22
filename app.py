@@ -18,6 +18,102 @@ from auth import (
     check_subscription_status
 )
 
+# ────────────────────────────────────────────────────────────────
+# ЕКСПЕРИМЕНТ: прибираємо три крапки + анімацію спортсменів + Deploy
+# Якщо щось зламається — закоментуйте весь цей блок до наступного ───
+st.set_page_config(
+    page_title="FIFO Tax Calculator",
+    layout="wide",
+    initial_sidebar_state="auto",
+    menu_items={
+        "Get help": None,
+        "Report a bug": None,
+        "About": None
+    }
+)
+
+st.markdown("""
+<style>
+    /* Ховаємо toolbar (три крапки, running animation, Deploy) */
+    section[data-testid="stToolbar"],
+    div[data-testid="stToolbar"],
+    [data-testid="stAppToolbar"],
+    [data-testid="stDecoration"],
+    button[data-testid^="stBaseButton-header"],
+    [kind="header"] button,
+    .stDeployButton,
+    .st-emotion-cache-1cpxqw2 {   /* іноді анімація ховається тут */
+        display: none !important;
+    }
+
+    /* Додатково ховаємо анімацію спортсменів у spinner */
+    div.stSpinner > div > svg,
+    [data-testid="stToolbar"] svg,
+    [data-testid="stSpinner"] svg {
+        display: none !important;
+    }
+
+    /* Компенсуємо висоту, щоб контент піднявся вгору */
+    .main > .block-container {
+        padding-top: 1rem !important;
+        margin-top: -0.5rem !important;
+    }
+
+    /* Повертаємо кнопку розгортання сайдбару (стрілка), якщо зникла */
+    button[data-testid="stSidebarCollapseButton"],
+    button[aria-label="Open sidebar"],
+    [data-testid="collapsedControl"],
+    section[data-testid="stSidebarUserContent"] ~ button {
+        display: inline-flex !important;
+        position: fixed !important;
+        left: 8px !important;
+        top: 8px !important;
+        z-index: 1000 !important;
+        background: white !important;
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    /* Простір під майбутні auth-елементи зверху */
+    .stAppHeader, header {
+        height: 48px !important;
+        min-height: 48px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+# ────────────────────────────────────────────────────────────────
+# КІНЕЦЬ ЕКСПЕРИМЕНТАЛЬНОГО БЛОКУ — нижче звичайний код
+# ────────────────────────────────────────────────────────────────
+
+# Функція для відображення авторизації зверху праворуч
+def show_auth_in_header():
+    if st.session_state.get("authenticated", False):
+        col1, col2 = st.columns([7, 3])
+        with col2:
+            status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
+            st.markdown(
+                f"<div style='text-align:right; padding:8px 0;'>"
+                f"👤 <strong>{st.session_state.user.email}</strong> | {status}"
+                "</div>",
+                unsafe_allow_html=True
+            )
+            if st.button("🚪 Вийти", key="header_logout", use_container_width=False):
+                from auth import supabase  # імпорт тут, щоб не ламати auth.py
+                supabase.auth.sign_out()
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+    else:
+        col1, col2 = st.columns([7, 3])
+        with col2:
+            if st.button("🔑 Увійти / Зареєструватися", key="header_login"):
+                st.session_state.show_login = True
+                st.rerun()
+
+# Виклик відображення авторизації зверху
+show_auth_in_header()
+
 # ==============================================================================
 # CSS — гарантуємо повну висоту контенту + прибираємо зайвий верхній відступ
 # ==============================================================================
@@ -36,7 +132,6 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Зменшуємо верхній відступ, але не ховаємо header */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -73,34 +168,17 @@ def show_no_data_message(section_name=""):
     st.info(msg)
 
 # ==============================================================================
-# ДОПОМІЖНА ФУНКЦІЯ ДЛЯ СТИЛІЗАЦІЇ ТАБЛИЦЬ (центрування, форматування чисел)
+# ДОПОМІЖНА ФУНКЦІЯ ДЛЯ СТИЛІЗАЦІЇ ТАБЛИЦЬ
 # ==============================================================================
 def style_dataframe(df, tab_name):
-    """
-    Повертає Styler із центруванням та форматуванням чисел.
-    Для PRO-користувачів використовуємо, для free – повертаємо оригінал без стилів.
-    """
     if not st.session_state.get("is_pro", False):
-        return df  # free — без стилів, дані вже замасковані
-
+        return df
     if df is None or df.empty:
         return df
-
-    # Список колонок, які мають форматуватися з 4 знаками після коми
     cols_4dec = ["Kurs NBP", "Kurs", "Kurs (USD)", "Koszt sredni", "Kurs NBP (D-1)"]
-    # Список колонок-відсотків
     cols_percent = ["Stawka zr. %", "Waga %", "Udział %"]
-
-    # Створюємо Styler
-    styler = df.style
-
-    # Застосовуємо центрування до всіх комірок
-    styler = styler.set_properties(**{'text-align': 'center'})
-
-    # Визначаємо числові колонки (крім тих, що вже є рядками)
+    styler = df.style.set_properties(**{'text-align': 'center'})
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-
-    # Форматування для кожної колонки
     for col in numeric_cols:
         if col in cols_4dec:
             styler = styler.format({col: "{:,.4f}"})
@@ -108,7 +186,6 @@ def style_dataframe(df, tab_name):
             styler = styler.format({col: "{:.2%}"})
         else:
             styler = styler.format({col: "{:,.2f}"})
-
     return styler
 
 # ==============================================================================
@@ -209,7 +286,7 @@ def Module3_FIFO_Data_Compiler(broker_data, rates_data):
     return fifo_df.drop(columns=['LookupDate'])
 
 # ==============================================================================
-# МОДУЛЬ 4: Компіляція Finance даних (дивіденди, відсотки, cash)
+# МОДУЛЬ 4: Компіляція Finance даних
 # ==============================================================================
 def Module4_Finance_Data_Compiler(broker_data):
     all_finance = []
@@ -698,6 +775,9 @@ def Module12_PIT38_Report(fifo_df, finance_df, rates_data, selected_year="Wszyst
 # ==============================================================================
 # SIDEBAR (твій оригінальний код) — ВИДАЛЕНО НАПИС "📥 Завантаження даних"
 # ==============================================================================
+# ==============================================================================
+# SIDEBAR
+# ==============================================================================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
     if new_files:
@@ -709,8 +789,6 @@ def render_sidebar():
     with st.sidebar:
         st.title("🧮 Калькулятор податків FIFO")
         st.markdown("---")
-        # === ЗМІНА: видалено напис "📥 Завантаження даних" ===
-        # st.subheader("📥 Завантаження даних")  # закоментовано
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
@@ -752,6 +830,7 @@ def render_sidebar():
         else:
             st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
     return st.session_state.my_files
+
 
 # ==============================================================================
 # RENDER ФУНКЦІЇ — вивід вкладок з обмеженнями для FREE + нове форматування
@@ -1204,6 +1283,9 @@ def render_PIT38_Tab():
 # ==============================================================================
 # recalculate_reports + селектор року + головний оркестратор вкладок
 # ==============================================================================
+# ==============================================================================
+# recalculate_reports + селектор року + головний оркестратор вкладок
+# ==============================================================================
 def recalculate_reports(selected_year):
     if st.session_state.fifo_df is None or st.session_state.finance_df is None:
         return
@@ -1240,37 +1322,27 @@ def recalculate_reports(selected_year):
 def render_global_year_selector():
     if st.session_state.fifo_df is None and st.session_state.finance_df is None:
         return
-    
     years = set()
     if st.session_state.fifo_df is not None and not st.session_state.fifo_df.empty:
         years.update(st.session_state.fifo_df['Date'].dt.year.dropna().unique())
     if st.session_state.finance_df is not None and not st.session_state.finance_df.empty:
         years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
-    
     year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
-    
     current_index = 0
     if st.session_state.selected_year in year_options:
         current_index = year_options.index(st.session_state.selected_year)
-    
     def on_year_change():
         new_year = st.session_state.global_year
         if not st.session_state.get("is_pro", False):
             st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
-            st.session_state.global_year = st.session_state.selected_year  # повертаємо назад
+            st.session_state.global_year = st.session_state.selected_year
         else:
             if new_year != st.session_state.selected_year:
                 recalculate_reports(new_year)
-    
-    # Мінімальний відступ зверху, щоб не прилипало до вкладок
     st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
-    
-    # Дві колонки: напис і селектор дуже близько один до одного
     col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="xxsmall")
-    
     with col_label:
         st.markdown("**Wybierz rok:**")
-    
     with col_selector:
         st.selectbox(
             label="",
@@ -1287,9 +1359,7 @@ def render_main_tabs():
         tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
     if st.session_state.get('finance_df') is not None:
         tabs_names.extend(["Tax_Dividend", "Tax_Interest", "Cash", "PIT38"])
-    
     tabs = st.tabs(tabs_names)
-    
     for i, name in enumerate(tabs_names):
         with tabs[i]:
             if name in st.session_state.broker_data:
@@ -1311,17 +1381,15 @@ def render_main_tabs():
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")  # вже було вище, але для сумісності
 
-# ====================== АВТОРИЗАЦІЯ ======================
 require_auth()
 check_subscription_status()
 
-# ====================== БОКОВА ПАНЕЛЬ ======================
-show_auth_status_and_logout()
+show_auth_status_and_logout()  # старий виклик — можна видалити, якщо використовуєш тільки header
+
 uploaded_files = render_sidebar()
 
-# ====================== ОСНОВНИЙ ВМІСТ ======================
 if st.session_state.broker_data is not None:
     render_global_year_selector()
     render_main_tabs()
