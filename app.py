@@ -25,47 +25,35 @@ from auth import (
 # ==============================================================================
 st.markdown("""
 <style>
-    /* Таблиці без внутрішньої прокрутки */
+    /* Таблиці без прокрутки */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
     }
-    .ag-theme-streamlit {
-        max-height: none !important;
-        height: auto !important;
-    }
-    .ag-theme-streamlit .ag-body-viewport,
-    .ag-theme-streamlit .ag-center-cols-viewport {
+    .ag-theme-streamlit, .ag-theme-streamlit .ag-body-viewport {
         max-height: none !important;
         height: auto !important;
     }
 
-    /* Ховаємо стандартний header Streamlit (гамбургер, логотип тощо) */
+    /* Ховаємо header Streamlit */
     header[data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* Приховуємо стрілку згортання сайдбару (саме та, що при наведенні на край) */
-    [data-testid="stSidebarCollapsedControl"] {
-        display: none !important;
+    /* Приховуємо стрілку закриття тільки на десктопах */
+    @media (min-width: 992px) {
+        [data-testid="collapsedControl"] {
+            display: none !important;
+        }
     }
 
-    /* Приховуємо повзунок прокрутки сайдбару, якщо він не потрібен */
-    section[data-testid="stSidebar"]::-webkit-scrollbar {
-        display: none !important;
-    }
-    section[data-testid="stSidebar"] {
-        -ms-overflow-style: none !important;  /* IE and Edge */
-        scrollbar-width: none !important;     /* Firefox */
-    }
-
-    /* Піднімаємо вміст сайдбару трохи вище (як ти просив) */
+    /* Піднімаємо вміст сайдбару вище */
     section[data-testid="stSidebar"] > div:first-child {
         padding-top: 0.5rem !important;
         margin-top: -0.5rem !important;
     }
 
-    /* Прибираємо зайві відступи зверху основного контенту */
+    /* Прибираємо зайві відступи зверху */
     .main > div:first-child {
         padding-top: 0.5rem !important;
     }
@@ -74,28 +62,49 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
 
-    /* Завжди показуємо сайдбар і фіксуємо ширину */
-    section[data-testid="stSidebar"] {
-        display: block !important;
-        width: 320px !important;
-        min-width: 320px !important;
-        max-width: 320px !important;
-        transform: translateX(0) !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
-
-    /* На вузьких екранах сайдбар не ховається */
-    @media (max-width: 991px) {
+    /* Десктоп: сайдбар фіксований і завжди відкритий */
+    @media (min-width: 992px) {
         section[data-testid="stSidebar"] {
+            display: block !important;
+            width: 320px !important;
+            min-width: 320px !important;
+            max-width: 320px !important;
             transform: translateX(0) !important;
             position: fixed !important;
-            z-index: 1000 !important;
             left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            z-index: 999 !important;
         }
         .main {
             margin-left: 320px !important;
         }
+    }
+
+    /* Мобілка: сайдбар ховається за гамбургером, як у стандартному Streamlit */
+    @media (max-width: 991px) {
+        section[data-testid="stSidebar"] {
+            width: 80% !important;
+            max-width: 320px !important;
+            position: fixed !important;
+            z-index: 1000 !important;
+        }
+        .main {
+            margin-left: 0 !important;
+        }
+        /* Показуємо гамбургер на мобілках */
+        button[data-testid="baseButton-header"] {
+            display: block !important;
+        }
+    }
+
+    /* Приховуємо повзунок прокрутки, якщо не потрібен */
+    section[data-testid="stSidebar"]::-webkit-scrollbar {
+        width: 6px !important;
+    }
+    section[data-testid="stSidebar"]::-webkit-scrollbar-thumb {
+        background: #888 !important;
+        border-radius: 3px !important;
     }
 </style>
 """, unsafe_allow_html=True)
