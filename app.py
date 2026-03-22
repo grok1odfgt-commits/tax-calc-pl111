@@ -25,6 +25,7 @@ from auth import (
 # ==============================================================================
 st.markdown("""
 <style>
+    /* Таблиці без внутрішньої прокрутки */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -38,40 +39,55 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Приховуємо стандартний заголовок */
+
+    /* Повністю ховаємо стандартний header Streamlit (гамбургер, логотип, анімації тощо) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
-    /* Прибираємо зайві відступи, щоб контент піднявся */
+
+    /* Ховаємо кнопку закриття сайдбару (стрілка вліво) */
+    button[kind="header"] {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] > div > button {
+        display: none !important;
+    }
+
+    /* Прибираємо зайві відступи зверху */
     .main > div:first-child {
-        padding-top: 0rem;
+        padding-top: 0.5rem !important;
     }
     .block-container {
-        padding-top: 0rem !important;
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
     }
-    /* Стилі для власної верхньої панелі */
-    .custom-top-bar {
-        background-color: #f0f2f6;
-        padding: 0.5rem 1rem;
-        border-bottom: 1px solid #ddd;
-        margin-bottom: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+
+    /* Завжди показуємо сайдбар і робимо його фіксованою шириною */
+    section[data-testid="stSidebar"] {
+        display: block !important;
+        width: 320px !important;
+        min-width: 320px !important;
+        max-width: 320px !important;
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
-    .site-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1e466e;
-    }
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+
+    /* На вузьких екранах примусово показуємо сайдбар без гамбургера */
+    @media (max-width: 991px) {
+        section[data-testid="stSidebar"] {
+            transform: translateX(0) !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: fixed !important;
+            z-index: 1000 !important;
+        }
+        .main {
+            margin-left: 320px !important;  /* щоб контент не перекривався сайдбаром */
+        }
     }
 </style>
 """, unsafe_allow_html=True)
-
 # ==============================================================================
 # ІНІЦІАЛІЗАЦІЯ СЕСІЙНОГО СТАНУ
 # ==============================================================================
@@ -1401,8 +1417,11 @@ def render_main_tabs():
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
-
+st.set_page_config(
+    layout="wide",
+    page_title="FIFO Tax Calculator",
+    initial_sidebar_state="expanded"   # ключовий параметр — сайдбар завжди відкритий
+)
 # ====================== АВТОРИЗАЦІЯ ======================
 init_auth_session()
 check_subscription_status()
