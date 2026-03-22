@@ -38,39 +38,27 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Приховуємо стандартний заголовок Streamlit */
+    /* Робимо header мінімальним і майже невидимим */
     header[data-testid="stHeader"] {
-        display: none !important;
+        min-height: 0rem !important;
+        height: 0rem !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
-    /* Прибираємо зайві відступи, щоб контент піднявся */
+    /* Прибираємо зайві відступи зверху */
     .main > div:first-child {
-        padding-top: 0rem;
+        padding-top: 0.5rem !important;
     }
     .block-container {
-        padding-top: 0rem !important;
+        padding-top: 1rem !important;
     }
-    /* Стилі для власної верхньої панелі */
-    .custom-top-bar {
-        background-color: #f0f2f6;
-        padding: 0.5rem 1rem;
-        border-bottom: 1px solid #ddd;
-        margin-bottom: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    /* Завжди показуємо сайдбар, навіть на мобілках */
+    section[data-testid="stSidebar"] {
+        display: block !important;
+        width: 300px !important;  /* або інша ширина */
     }
-    .site-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1e466e;
-    }
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    /* Ховаємо кнопку згортання сайдбару (гамбургер) */
-    button[data-testid="baseButton-header"] {
+    /* Ховаємо кнопку закриття сайдбару (якщо треба) */
+    button[kind="header"] {
         display: none !important;
     }
 </style>
@@ -1405,8 +1393,11 @@ def render_main_tabs():
 # ==============================================================================
 # ЗАПУСК
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", initial_sidebar_state="expanded")
-
+st.set_page_config(
+    layout="wide",
+    page_title="FIFO Tax Calculator",
+    initial_sidebar_state="expanded"  # завжди відкритий
+)
 # ====================== АВТОРИЗАЦІЯ ======================
 init_auth_session()
 check_subscription_status()
