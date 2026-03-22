@@ -40,15 +40,20 @@ st.markdown("""
         height: auto !important;
     }
 
-    /* Повністю ховаємо стандартний header Streamlit (гамбургер, логотип, анімації тощо) */
+    /* Повністю ховаємо стандартний header Streamlit (гамбургер, логотип тощо) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* Ховаємо кнопку закриття сайдбару (стрілка вліво) */
-    button[kind="header"] {
+    /* Приховуємо стрілку закриття сайдбару (головне, що ти просив) */
+    [data-testid="collapsedControl"] {
         display: none !important;
     }
+
+    /* Ховаємо будь-які кнопки/стрілки всередині сайдбару */
+    section[data-testid="stSidebar"] button,
+    section[data-testid="stSidebar"] button[kind="primary"],
+    section[data-testid="stSidebar"] button[kind="header"],
     section[data-testid="stSidebar"] > div > button {
         display: none !important;
     }
@@ -62,7 +67,7 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
 
-    /* Завжди показуємо сайдбар і робимо його фіксованою шириною */
+    /* Завжди показуємо сайдбар і фіксуємо ширину */
     section[data-testid="stSidebar"] {
         display: block !important;
         width: 320px !important;
@@ -71,19 +76,19 @@ st.markdown("""
         transform: translateX(0) !important;
         visibility: visible !important;
         opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
-    /* На вузьких екранах примусово показуємо сайдбар без гамбургера */
+    /* На вузьких екранах сайдбар не ховається */
     @media (max-width: 991px) {
         section[data-testid="stSidebar"] {
             transform: translateX(0) !important;
-            visibility: visible !important;
-            opacity: 1 !important;
             position: fixed !important;
             z-index: 1000 !important;
+            left: 0 !important;
         }
         .main {
-            margin-left: 320px !important;  /* щоб контент не перекривався сайдбаром */
+            margin-left: 320px !important;
         }
     }
 </style>
