@@ -40,22 +40,21 @@ st.markdown("""
         height: auto !important;
     }
 
-    /* Повністю ховаємо стандартний header Streamlit (гамбургер, логотип тощо) */
+    /* Ховаємо стандартний header Streamlit (гамбургер, логотип тощо) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* Приховуємо стрілку закриття сайдбару (головне, що ти просив) */
+    /* Приховуємо ТІЛЬКИ стрілочку закриття сайдбару (collapse arrow) */
     [data-testid="collapsedControl"] {
         display: none !important;
     }
 
-    /* Ховаємо будь-які кнопки/стрілки всередині сайдбару */
+    /* Повертаємо видимість усіх кнопок у сайдбарі */
     section[data-testid="stSidebar"] button,
-    section[data-testid="stSidebar"] button[kind="primary"],
-    section[data-testid="stSidebar"] button[kind="header"],
-    section[data-testid="stSidebar"] > div > button {
-        display: none !important;
+    section[data-testid="stSidebar"] .stButton button {
+        display: block !important;
+        visibility: visible !important;
     }
 
     /* Прибираємо зайві відступи зверху */
@@ -76,7 +75,6 @@ st.markdown("""
         transform: translateX(0) !important;
         visibility: visible !important;
         opacity: 1 !important;
-        pointer-events: auto !important;
     }
 
     /* На вузьких екранах сайдбар не ховається */
