@@ -1,17 +1,16 @@
 # ==============================================================================
-# AUTH.PY — СИСТЕМА РЕЄСТРАЦІЇ + ПІДПИСКИ (РУЧНА АКТИВАЦІЯ)
+# AUTH.PY — СИСТЕМА АВТОРИЗАЦІЇ + ПІДПИСКИ (МОДАЛЬНИЙ ДІАЛОГ + FREE РЕЖИМ)
 # ==============================================================================
 import streamlit as st
 from supabase import create_client, Client
 import os
-import pandas as pd
 
 # ====================== НАЛАШТУВАННЯ SUPABASE ======================
 SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or st.secrets.get("SUPABASE_ANON_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("❌ Не знайдено SUPABASE_URL або SUPABASE_ANON_KEY у Render secrets!")
+    st.error("❌ Не знайдено SUPABASE_URL або SUPABASE_ANON_KEY у secrets!")
     st.stop()
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -27,145 +26,120 @@ def init_auth_session():
     if "subscription_plan" not in st.session_state:
         st.session_state.subscription_plan = "free"
 
-# ====================== ОСНОВНА ФУНКЦІЯ: ПЕРЕВІРКА АВТОРИЗАЦІЇ ======================
-def require_auth():
-    init_auth_session()
-    if st.session_state.authenticated:
-        return
-
-    st.markdown("---")
-    col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
-    with col2:
-        if st.button("🔑 Увійти", use_container_width=True):
-            st.session_state.show_login = True
-    with col3:
-        if st.button("📝 Реєстрація", use_container_width=True):
-            st.session_state.show_register = True
-    st.markdown("---")
-
-    if st.session_state.get("show_login", False):
-        with st.form("login_form"):
-            st.subheader("🔑 Увійти в акаунт")
-            email = st.text_input("Email")
-            password = st.text_input("Пароль", type="password")
-            if st.form_submit_button("Увійти"):
-                try:
-                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user = res.user
-                    st.session_state.authenticated = True
-                    st.session_state.show_login = False
-                    try:
-                        check_subscription_status()
-                    except Exception as e:
-                        st.sidebar.warning(f"⚠️ Не вдалося перевірити підписку: {e}")
-                    st.success("✅ Успішний вхід!")
-                    st.rerun()
-                except Exception as auth_error:
-                    st.error(f"Помилка входу: {auth_error}")
-
-    if st.session_state.get("show_register", False):
-        with st.form("register_form"):
-            st.subheader("📝 Створити новий акаунт")
-            email = st.text_input("Email")
-            password = st.text_input("Пароль (мінімум 6 символів)", type="password")
-            if st.form_submit_button("Зареєструватися"):
-                try:
-                    res = supabase.auth.sign_up({"email": email, "password": password})
-                    st.success("✅ Акаунт створено! Перевір пошту (якщо потрібно). Тепер увійди.")
-                    st.session_state.show_register = False
-                except Exception as e:
-                    st.error(f"Помилка: {e}")
-
-    st.info("👋 Для користування калькулятором потрібно увійти або зареєструватися")
-    st.stop()
-
 # ====================== ПЕРЕВІРКА ПІДПИСКИ ======================
 def check_subscription_status():
-    """Перевіряє статус підписки в таблиці profiles"""
-    if not st.session_state.authenticated:
+    if not st.session_state.authenticated or not st.session_state.user:
         return
-
     try:
-        data = supabase.table("profiles").select("subscription_active, subscription_plan").eq("id", st.session_state.user.id).execute()
+        data = supabase.table("profiles").select("subscription_active, subscription_plan") \
+               .eq("id", st.session_state.user.id).execute()
         if data.data and len(data.data) > 0:
             st.session_state.is_pro = data.data[0].get("subscription_active", False)
             st.session_state.subscription_plan = data.data[0].get("subscription_plan", "free")
         else:
-            try:
-                supabase.table("profiles").insert({
-                    "id": st.session_state.user.id,
-                    "email": st.session_state.user.email,
-                    "subscription_active": False,
-                    "subscription_plan": "free"
-                }).execute()
-                st.session_state.is_pro = False
-                st.session_state.subscription_plan = "free"
-            except Exception as insert_error:
-                st.sidebar.warning(f"⚠️ Не вдалося створити профіль: {insert_error}")
-                st.session_state.is_pro = False
-                st.session_state.subscription_plan = "free"
+            supabase.table("profiles").insert({
+                "id": st.session_state.user.id,
+                "email": st.session_state.user.email,
+                "subscription_active": False,
+                "subscription_plan": "free"
+            }).execute()
+            st.session_state.is_pro = False
+            st.session_state.subscription_plan = "free"
     except Exception as e:
-        st.sidebar.warning(f"⚠️ Помилка доступу до профілю: {e}")
+        st.warning(f"⚠️ Не вдалося перевірити підписку: {e}")
         st.session_state.is_pro = False
         st.session_state.subscription_plan = "free"
 
-# ====================== ОБМЕЖЕННЯ ДЛЯ FREE КОРИСТУВАЧІВ ======================
-def apply_free_limits(df, tab_name):
-    """
-    Повертає DataFrame з заміненими на 'X' значеннями для free-користувачів,
-    але перші N рядків залишаються недоторканими.
-    Для PRO повертає оригінал.
-    """
-    if st.session_state.is_pro:
-        return df  # PRO — повний доступ
+# ====================== МОДАЛЬНЕ ВІКНО ЛОГІН ======================
+@st.dialog("🔑 Увійти")
+def login_dialog():
+    st.markdown("**Введіть дані для входу**")
+    with st.form("login_form"):
+        email = st.text_input("Email", placeholder="your@email.com")
+        password = st.text_input("Пароль", type="password")
+        if st.form_submit_button("Увійти", type="primary", use_container_width=True):
+            if not email or not password:
+                st.error("Заповніть обидва поля")
+                return
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.session_state.authenticated = True
+                check_subscription_status()
+                st.success(f"✅ Вітаємо, {res.user.email}!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Помилка входу: {e}")
 
+# ====================== МОДАЛЬНЕ ВІКНО РЕЄСТРАЦІЯ ======================
+@st.dialog("📝 Реєстрація")
+def register_dialog():
+    st.markdown("**Створити новий акаунт**")
+    with st.form("register_form"):
+        email = st.text_input("Email", placeholder="your@email.com")
+        password = st.text_input("Пароль (мінімум 6 символів)", type="password")
+        if st.form_submit_button("Зареєструватися", type="primary", use_container_width=True):
+            if not email or not password:
+                st.error("Заповніть обидва поля")
+                return
+            if len(password) < 6:
+                st.error("Пароль має бути не менше 6 символів")
+                return
+            try:
+                supabase.auth.sign_up({"email": email, "password": password})
+                st.success("✅ Акаунт створено! Перевірте пошту та увійдіть.")
+            except Exception as e:
+                st.error(f"Помилка реєстрації: {e}")
+
+# ====================== СТАТУС + КНОПКИ В SIDEBAR ======================
+def show_auth_status_and_logout():
+    if st.session_state.authenticated and st.session_state.user:
+        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+        st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
+        st.sidebar.markdown(f"**Статус:** {status}")
+        if st.sidebar.button("🚪 Вийти", use_container_width=True, type="secondary"):
+            supabase.auth.sign_out()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+    else:
+        st.sidebar.markdown("**🔓 Гість (free-режим)**")
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.button("🔑 Увійти", use_container_width=True):
+                login_dialog()
+        with col2:
+            if st.button("📝 Реєстрація", use_container_width=True):
+                register_dialog()
+
+# ====================== ОБМЕЖЕННЯ ДЛЯ FREE ======================
+def apply_free_limits(df, tab_name):
+    if st.session_state.is_pro:
+        return df
     if df is None or df.empty:
         return df
-
     df = df.copy()
-
-    # Ліміти для різних вкладок
     limits = {
         "Tax_Detailed_Report": 5,
         "Tax_Summary_Report": 5,
         "Tax_Dividend": 3,
         "Tax_Interest": 3
     }
-
     if tab_name in limits:
         limit = limits[tab_name]
-        # Якщо рядків більше ніж ліміт, замінюємо всі значення в рядках після ліміту на "X"
         if len(df) > limit:
             for i in range(limit, len(df)):
                 for col in df.columns:
                     df.at[i, col] = "X"
         return df
-
     elif tab_name == "PIT38":
-        # Для PIT38 маскуємо тільки колонку зі значеннями (припускаємо, що вона називається "Wartosc")
         if "Wartosc" in df.columns:
             df["Wartosc"] = "X"
         return df
-
-    # Для інших вкладок (Transactions, Portfolio, Cash) повертаємо без змін
     return df
 
-# ====================== КНОПКА ВИХОДУ + СТАТУС ======================
-def show_auth_status_and_logout():
-    if st.session_state.authenticated:
-        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free (дані замасковані)"
-        st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
-        st.sidebar.markdown(f"**Статус:** {status}")
-        if st.sidebar.button("🚪 Вийти"):
-            supabase.auth.sign_out()
-            st.session_state.clear()
-            st.rerun()
-
-# ====================== ФУНКЦІЯ ДЛЯ PRO ПЕРЕВІРКИ (використовується для вибору року) ======================
 def require_pro_for_feature(feature_name=""):
-    """Показує попередження, якщо користувач не PRO, але не зупиняє виконання (тільки для інтерактивних дій)"""
-    check_subscription_status()
     if not st.session_state.is_pro:
-        st.warning(f"🔒 {feature_name} доступно тільки після покупки підписки")
+        st.warning(f"🔒 {feature_name} доступно тільки для PRO-підписників")
         return False
     return True
