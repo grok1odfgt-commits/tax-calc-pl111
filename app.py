@@ -30,14 +30,14 @@ from calc import (
 )
 
 # ====================== CSS — виправлено, щоб зберегти кнопку сайдбару =============================================================================
-# Вставте цей код після st.set_page_config і перед іншим вмістом
+# Приховуємо хедер Streamlit і додаємо власні кнопки керування сайдбаром
 st.markdown("""
 <style>
-    /* Приховуємо весь хедер Streamlit */
+    /* Повністю приховуємо хедер (звідти зникнуть усі зайві елементи) */
     header[data-testid="stHeader"] {
         display: none !important;
     }
-    /* Видаляємо верхні відступи */
+    /* Видаляємо відступи, щоб контент не зміщувався */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -45,42 +45,71 @@ st.markdown("""
         padding-top: 0rem;
         margin-top: -0.5rem;
     }
+    /* Стилізація власних кнопок */
+    #collapse-sidebar-btn, #expand-sidebar-btn {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: #f0f2f6;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        transition: background 0.2s;
+    }
+    #collapse-sidebar-btn:hover, #expand-sidebar-btn:hover {
+        background: #e0e2e6;
+    }
 </style>
 
 <script>
-    // Створюємо власну кнопку-гамбургер
-    const btn = document.createElement('button');
-    btn.innerHTML = '☰';
-    btn.style.position = 'fixed';
-    btn.style.top = '10px';
-    btn.style.left = '10px';
-    btn.style.zIndex = '1000';
-    btn.style.background = 'transparent';
-    btn.style.border = 'none';
-    btn.style.fontSize = '24px';
-    btn.style.cursor = 'pointer';
-    btn.style.color = '#31333F';
-    
-    // Функція перемикання сайдбару
-    btn.onclick = function() {
+    function setupSidebarButtons() {
         const sidebar = document.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar) {
-            // Перевіряємо поточний стан
+        if (!sidebar) return;
+        
+        // Кнопка згортання (гамбургер)
+        const collapseBtn = document.createElement('button');
+        collapseBtn.id = 'collapse-sidebar-btn';
+        collapseBtn.innerHTML = '☰';
+        
+        // Кнопка розгортання (стрілка)
+        const expandBtn = document.createElement('button');
+        expandBtn.id = 'expand-sidebar-btn';
+        expandBtn.innerHTML = '►';
+        expandBtn.style.display = 'none';
+        
+        collapseBtn.onclick = () => {
+            sidebar.style.transform = 'translateX(-100%)';
+            updateButtons();
+        };
+        expandBtn.onclick = () => {
+            sidebar.style.transform = 'translateX(0)';
+            updateButtons();
+        };
+        
+        document.body.appendChild(collapseBtn);
+        document.body.appendChild(expandBtn);
+        
+        function updateButtons() {
             const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
-            if (isCollapsed) {
-                sidebar.style.transform = 'translateX(0)';
-                btn.innerHTML = '☰';
-            } else {
-                sidebar.style.transform = 'translateX(-100%)';
-                btn.innerHTML = '☰'; // можна змінити на іншу іконку, наприклад '✖'
-            }
+            collapseBtn.style.display = isCollapsed ? 'none' : 'flex';
+            expandBtn.style.display = isCollapsed ? 'flex' : 'none';
         }
-    };
+        
+        // Стежимо за змінами стану сайдбару
+        const observer = new MutationObserver(updateButtons);
+        observer.observe(sidebar, { attributes: true, attributeFilter: ['style'] });
+        updateButtons();
+    }
     
-    // Додаємо кнопку після завантаження DOM
-    document.addEventListener('DOMContentLoaded', function() {
-        document.body.appendChild(btn);
-    });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupSidebarButtons);
+    } else {
+        setupSidebarButtons();
+    }
 </script>
 """, unsafe_allow_html=True)
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
