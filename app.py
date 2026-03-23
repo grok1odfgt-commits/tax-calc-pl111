@@ -1,5 +1,5 @@
 # ==============================================================================
-# app.py — Головний UI Streamlit-застосунку (НОВИЙ СУЧАСНИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН)
+# app.py — Головний UI Streamlit-застосунку (НОВИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН + КАСТОМ TOP-BAR)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -29,9 +29,80 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== СУЧАСНИЙ CSS ======================
+# ====================== СУЧАСНИЙ CSS + КАСТОМ TOP-BAR ======================
 st.markdown("""
 <style>
+    /* Повністю прибираємо стандартний header Streamlit (три крапки, логотип тощо) */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* Залишаємо та стилізуємо кнопку розгортання/згортання sidebar */
+    button[data-testid="collapsedControl"] {
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 1001 !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border: 1px solid #d0d4d8 !important;
+        border-radius: 50% !important;
+        width: 44px !important;
+        height: 44px !important;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15) !important;
+        font-size: 20px !important;
+        color: #1a3c5e !important;
+        transition: all 0.2s ease;
+    }
+
+    button[data-testid="collapsedControl"]:hover {
+        background: #e0e7ff !important;
+        transform: scale(1.05);
+    }
+
+    /* Коли sidebar розгорнутий — кнопка закриття (X) залишається */
+    section[data-testid="stSidebar"][aria-expanded="true"] button {
+        display: block !important;
+    }
+
+    /* Прибираємо будь-які інші кнопки в хедері, крім collapsedControl */
+    button[data-testid^="baseButton-header"],
+    button[kind="header"]:not([data-testid="collapsedControl"]),
+    button[aria-label*="menu"],
+    button[aria-label*="More options"] {
+        display: none !important;
+    }
+
+    /* Відступи зверху для контенту (враховуємо top-bar + кнопку) */
+    .main > div:first-child {
+        padding-top: 70px !important;
+    }
+    .block-container {
+        padding-top: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    /* На мобільних пристроях робимо кнопку розгортання більшою та помітнішою */
+    @media (max-width: 768px) {
+        button[data-testid="collapsedControl"] {
+            top: 16px !important;
+            left: 16px !important;
+            width: 52px !important;
+            height: 52px !important;
+            font-size: 24px !important;
+            background: #4e8cff !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+        }
+
+        .main > div:first-child {
+            padding-top: 80px !important;
+        }
+    }
+
     /* Повна висота таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
@@ -46,37 +117,62 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    
-    /* Приховуємо весь хедер, але залишаємо кнопку сайдбару видимою */
-    header[data-testid="stHeader"] {
-        height: 0 !important;
-        overflow: visible !important;
-        background: transparent !important;
-    }
-    /* Приховуємо все, що знаходиться всередині хедера, крім кнопки сайдбару */
-    header[data-testid="stHeader"] > *:not([data-testid="stSidebarCollapseButton"]) {
-        display: none !important;
-    }
-    /* Фіксуємо кнопку сайдбару у верхньому лівому куті */
-    [data-testid="stSidebarCollapseButton"] {
-        position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        z-index: 1000 !important;
-        background: transparent !important;
-        border: none !important;
-        cursor: pointer !important;
-    }
-    /* Видаляємо верхні відступи контейнера */
-    .main > div:first-child {
-        padding-top: 0rem;
-    }
-    .block-container {
-        padding-top: 0rem;
-        margin-top: -0.5rem;
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# Кастомний fixed top-bar
+st.markdown(f"""
+<div style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(90deg, #1e40af, #3b82f6);
+    color: white;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif;
+">
+    <div style="font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px;">
+        🧮 FIFO Tax Calculator
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px; font-size: 1rem;">
+        <span style="font-weight: 600;">
+            {"✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"}
+        </span>
+        {f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"}
+        {'''
+            <button id="top-logout-btn" style="
+                background: rgba(255,255,255,0.2);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.4);
+                padding: 6px 14px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.2s;
+            ">Вийти</button>
+        ''' if st.session_state.get("authenticated", False) else ""}
+    </div>
+</div>
+
+<script>
+    const logoutBtn = document.getElementById('top-logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            // Викликаємо вихід через Streamlit (можна замінити на точний селектор кнопки Вийти з sidebar)
+            window.parent.document.querySelector('button[kind="secondary"]')?.click() ||
+            window.parent.location.reload();  // fallback
+        });
+    }
+</script>
+""", unsafe_allow_html=True)
+
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
