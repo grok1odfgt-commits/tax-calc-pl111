@@ -121,58 +121,72 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Кастомний fixed top-bar
-st.markdown(f"""
-<div style="
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 56px;
-    background: linear-gradient(90deg, #1e40af, #3b82f6);
-    color: white;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-family: system-ui, sans-serif;
-">
-    <div style="font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px;">
-        🧮 FIFO Tax Calculator
+# Кастомний fixed top-bar (виправлений без помилок у f-string)
+st.markdown(
+    """
+    <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: linear-gradient(90deg, #1e40af, #3b82f6);
+        color: white;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-family: system-ui, sans-serif;
+    ">
+        <div style="font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px;">
+            🧮 FIFO Tax Calculator
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; font-size: 1rem;">
+            <span style="font-weight: 600;">
+                {}
+            </span>
+            {}
+            {}
+        </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 20px; font-size: 1rem;">
-        <span style="font-weight: 600;">
-            {"✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"}
-        </span>
-        {f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"}
-        {'''
-            <button id="top-logout-btn" style="
-                background: rgba(255,255,255,0.2);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.4);
-                padding: 6px 14px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                transition: all 0.2s;
-            ">Вийти</button>
-        ''' if st.session_state.get("authenticated", False) else ""}
-    </div>
-</div>
 
-<script>
-    const logoutBtn = document.getElementById('top-logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            // Викликаємо вихід через Streamlit (можна замінити на точний селектор кнопки Вийти з sidebar)
-            window.parent.document.querySelector('button[kind="secondary"]')?.click() ||
-            window.parent.location.reload();  // fallback
-        });
-    }
-</script>
-""", unsafe_allow_html=True)
-
+    <script>
+        const logoutBtn = document.getElementById('top-logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function() {
+                // Спроба знайти та натиснути кнопку "Вийти" з sidebar
+                const logoutButtons = window.parent.document.querySelectorAll('button');
+                for (let btn of logoutButtons) {
+                    if (btn.textContent.includes('Вийти') || btn.textContent.includes('Вийти')) {
+                        btn.click();
+                        break;
+                    }
+                }
+                // Якщо не знайшло — просто перезавантажуємо сторінку
+                setTimeout(() => window.parent.location.reload(), 300);
+            });
+        }
+    </script>
+    """.format(
+        "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free",
+        f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість",
+        '''
+        <button id="top-logout-btn" style="
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        ">Вийти</button>
+        ''' if st.session_state.get("authenticated", False) else ""
+    ),
+    unsafe_allow_html=True
+)
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
