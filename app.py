@@ -124,78 +124,76 @@ st.markdown("""
 # Кастомний fixed top-bar (виправлений без помилок у f-string)
 # Кастомний fixed top-bar — виправлений варіант без синтаксичних помилок
 # Кастомний fixed top-bar — фінальна виправлена версія
-st.markdown(
-    """
-    <div style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 56px;
-        background: linear-gradient(90deg, #1e40af, #3b82f6);
-        color: white;
-        z-index: 999;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        font-family: system-ui, -apple-system, sans-serif;
-    ">
-        <div style="font-size: 1.45rem; font-weight: 700; letter-spacing: -0.4px; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 1.6rem;">🧮</span> FIFO Tax Calculator
-        </div>
-        
-        <div style="display: flex; align-items: center; gap: 24px;">
-            <span style="font-weight: 600; font-size: 1.05rem;">
-                {status}
-            </span>
-            <span style="font-size: 1.05rem; opacity: 0.95;">
-                {user_info}
-            </span>
-            {logout_button}
-        </div>
-    </div>
+# Кастомний top-bar — максимально чистий і безпечний варіант
+status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
+user_info = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"
 
-    <script>
-        const logoutBtn = document.getElementById('top-logout-btn');
-        if (logoutBtn) {{
-            logoutBtn.addEventListener('click', function() {{
-                const buttons = window.parent.document.querySelectorAll('button');
-                for (let btn of buttons) {{
-                    if (btn.textContent.trim() === 'Вийти' || btn.textContent.trim().includes('Вийти')) {{
-                        btn.click();
-                        break;
-                    }}
+logout_button = ""
+if st.session_state.get("authenticated", False):
+    logout_button = '''
+        <button id="top-logout" style="
+            background: rgba(255,255,255,0.18);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.98rem;
+            transition: all 0.18s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+        ">Вийти</button>
+    '''
+
+html = f"""
+<div style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(90deg, #1e40af, #3b82f6);
+    color: white;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif;
+">
+    <div style="font-size: 1.45rem; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.6rem;">🧮</span> FIFO Tax Calculator
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 24px;">
+        <span style="font-weight: 600; font-size: 1.05rem;">{status}</span>
+        <span style="font-size: 1.05rem; opacity: 0.95;">{user_info}</span>
+        {logout_button}
+    </div>
+</div>
+
+<script>
+    const btn = document.getElementById('top-logout');
+    if (btn) {{
+        btn.addEventListener('click', () => {{
+            const buttons = window.parent.document.querySelectorAll('button');
+            for (let b of buttons) {{
+                if (b.textContent.trim() === 'Вийти') {{
+                    b.click();
+                    return;
                 }}
-                setTimeout(() => {{ window.parent.location.reload(); }}, 400);
-            }});
-        }}
-    </script>
-    """.format(
-        status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free",
-        user_info = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість",
-        logout_button = '''
-            <button id="top-logout-btn" style="
-                background: rgba(255,255,255,0.18);
-                color: white;
-                border: 1px solid rgba(255,255,255,0.35);
-                padding: 8px 18px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 0.98rem;
-                transition: all 0.18s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 36px;
-                line-height: 1;
-            ">Вийти</button>
-        ''' if st.session_state.get("authenticated", False) else ""
-    ),
-    unsafe_allow_html=True
-)
+            }}
+            setTimeout(() => window.parent.location.reload(), 300);
+        }});
+    }}
+</script>
+"""
+
+st.markdown(html, unsafe_allow_html=True)
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
