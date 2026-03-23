@@ -111,17 +111,33 @@ user_text = " • " + st.session_state.user.email.split('@')[0] if st.session_st
 
 logout_button_html = ""
 if st.session_state.get("authenticated", False):
-    logout_button_html = '<button id="top-logout-btn" style="background: rgba(255,255,255,0.18); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 8px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.98rem; transition: all 0.18s; display: flex; align-items: center; justify-content: center; height: 36px;">Вийти</button>'
+    logout_button_html = (
+        '<button id="top-logout-btn" style="'
+        'background: rgba(255,255,255,0.18); '
+        'color: white; '
+        'border: 1px solid rgba(255,255,255,0.4); '
+        'padding: 8px 18px; '
+        'border-radius: 6px; '
+        'cursor: pointer; '
+        'font-weight: 600; '
+        'font-size: 0.98rem; '
+        'transition: all 0.18s; '
+        'display: flex; '
+        'align-items: center; '
+        'justify-content: center; '
+        'height: 36px;"'
+        '>Вийти</button>'
+    )
 
-top_bar_template = """
+top_bar_html = """
 <div style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: linear-gradient(90deg, #1e40af, #3b82f6); color: white; z-index: 999; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
     <div style="font-size: 1.45rem; font-weight: 700; display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 1.6rem;">🧮</span> FIFO Tax Calculator
     </div>
     <div style="display: flex; align-items: center; gap: 24px;">
-        <span style="font-weight: 600; font-size: 1.05rem;">{}</span>
-        <span style="font-size: 1.05rem; opacity: 0.95;">{}</span>
-        {}
+        <span style="font-weight: 600; font-size: 1.05rem;">{0}</span>
+        <span style="font-size: 1.05rem; opacity: 0.95;">{1}</span>
+        {2}
     </div>
 </div>
 
@@ -140,12 +156,9 @@ top_bar_template = """
         });
     }
 </script>
-"""
-
-top_bar_html = top_bar_template.format(status_text, user_text, logout_button_html)
+""".format(status_text, user_text, logout_button_html)
 
 st.markdown(top_bar_html, unsafe_allow_html=True)
-
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
