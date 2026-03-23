@@ -13,7 +13,7 @@ from auth import (
     check_subscription_status
 )
 # Імпортуємо всі функції з бекенду
-from tax_calculator import (
+from calc import (
     Module1_Data_Import,
     Module2_Currency_Rates,
     Module3_FIFO_Data_Compiler,
