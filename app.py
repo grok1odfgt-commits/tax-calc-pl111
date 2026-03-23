@@ -111,23 +111,7 @@ user_text = " • " + st.session_state.user.email.split('@')[0] if st.session_st
 
 logout_button_html = ""
 if st.session_state.get("authenticated", False):
-    logout_button_html = (
-        '<button id="top-logout-btn" style="'
-        'background: rgba(255,255,255,0.18); '
-        'color: white; '
-        'border: 1px solid rgba(255,255,255,0.4); '
-        'padding: 8px 18px; '
-        'border-radius: 6px; '
-        'cursor: pointer; '
-        'font-weight: 600; '
-        'font-size: 0.98rem; '
-        'transition: all 0.18s; '
-        'display: flex; '
-        'align-items: center; '
-        'justify-content: center; '
-        'height: 36px;"'
-        '>Вийти</button>'
-    )
+    logout_button_html = '<button id="top-logout-btn" style="background: rgba(255,255,255,0.18); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 8px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.98rem; transition: all 0.18s; display: flex; align-items: center; justify-content: center; height: 36px;">Вийти</button>'
 
 top_bar_html = """
 <div style="position: fixed; top: 0; left: 0; right: 0; height: 56px; background: linear-gradient(90deg, #1e40af, #3b82f6); color: white; z-index: 999; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
@@ -135,9 +119,9 @@ top_bar_html = """
         <span style="font-size: 1.6rem;">🧮</span> FIFO Tax Calculator
     </div>
     <div style="display: flex; align-items: center; gap: 24px;">
-        <span style="font-weight: 600; font-size: 1.05rem;">{0}</span>
-        <span style="font-size: 1.05rem; opacity: 0.95;">{1}</span>
-        {2}
+        <span style="font-weight: 600; font-size: 1.05rem;">{}</span>
+        <span style="font-size: 1.05rem; opacity: 0.95;">{}</span>
+        {}
     </div>
 </div>
 
@@ -159,6 +143,7 @@ top_bar_html = """
 """.format(status_text, user_text, logout_button_html)
 
 st.markdown(top_bar_html, unsafe_allow_html=True)
+
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
@@ -183,7 +168,7 @@ for key in keys:
 def show_no_data_message(section_name=""):
     msg = "✅ Dane zostały obliczone, ale za wybrany rok brak operacji tego typu."
     if section_name:
-        msg = f"✅ {section_name} — dane zostały obliczone, ale za wybrany rok brak operacji."
+        msg = f"✅ {section_name} — dane були обчислені, але за обраний рік бракує операцій."
     st.info(msg)
 
 def style_dataframe(df, tab_name):
@@ -292,7 +277,167 @@ def render_Tax_Detailed_Report_Tab():
             "Profit Summary": st.session_state.profit_summary
         }, "Tax_Detailed_Report", "tax_detailed")
 
-# (всі інші функції render_... залишаються без змін, як у твоєму коді)
+# (всі інші функції render_Tax_Summary_Report_Tab, render_Tax_Dividend_Report_Tab тощо залишаються без змін — просто скопіюй їх з твого оригінального коду, якщо потрібно)
+
+# ====================== БОКОВА ПАНЕЛЬ ======================
+def update_file_list():
+    new_files = st.session_state.hidden_uploader
+    if new_files:
+        for f in new_files:
+            if f.name not in [file.name for file in st.session_state.my_files]:
+                st.session_state.my_files.append(f)
+
+def render_sidebar():
+    with st.sidebar:
+        st.title("🧮 Калькулятор податків FIFO")
+        st.markdown("---")
+        st.markdown("""
+        <style>
+            div[data-testid="stFileUploader"] { display: none !important; }
+            div[data-testid="stSidebar"] .stButton button { width: 100% !important; }
+        </style>
+        """, unsafe_allow_html=True)
+
+        if "my_files" not in st.session_state:
+            st.session_state.my_files = []
+
+        st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader",
+                         label_visibility="collapsed", on_change=update_file_list)
+
+        if st.button("📁 Додати файли (CSV)", type="primary", use_container_width=True):
+            components.html("""
+                <script>
+                    window.parent.document.querySelector('input[type="file"]').click();
+                </script>
+            """, height=0)
+
+        if st.session_state.my_files:
+            st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
+            for i, file in enumerate(st.session_state.my_files):
+                col1, col2 = st.columns([0.78, 0.22])
+                size_kb = round(file.size / 1024, 1)
+                col1.write(f"📄 **{file.name}** \n({size_kb} KB)")
+                if col2.button("❌", key=f"del_{i}"):
+                    st.session_state.my_files.pop(i)
+                    st.rerun()
+            if st.button("🗑️ Очистити всі", use_container_width=True):
+                st.session_state.my_files.clear()
+                st.rerun()
+            if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
+                with st.spinner("Виконується повний розрахунок за всі роки..."):
+                    st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
+                    st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
+                    st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
+                    st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
+                    recalculate_reports("Wszystkie lata")
+                st.success("✅ Усе розраховано!")
+                st.rerun()
+        else:
+            st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
+
+# ====================== ОБРОБКА ЗМІНИ РОКУ ТА ПЕРЕРАХУНОК ======================
+def recalculate_reports(selected_year):
+    if st.session_state.fifo_df is None or st.session_state.finance_df is None:
+        return
+    blocks, sales_sum, profit_sum = Module5_FIFO_Detailed_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.report_blocks = blocks
+    st.session_state.sales_summary = sales_sum
+    st.session_state.profit_summary = profit_sum
+    main_df, sales_sum6, profit_sum6 = Module6_FIFO_Summary_Tax_Report(st.session_state.fifo_df, selected_year)
+    st.session_state.summary_df = main_df
+    st.session_state.summary_sales = sales_sum6
+    st.session_state.summary_profit = profit_sum6
+    d_main, d_val, d_pln = Module7_Dividend_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.dividend_df = d_main
+    st.session_state.dividend_summary_val = d_val
+    st.session_state.dividend_summary_pln = d_pln
+    i_main, i_val, i_pln = Module8_Interest_Tax_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.interest_df = i_main
+    st.session_state.interest_summary_val = i_val
+    st.session_state.interest_summary_pln = i_pln
+    c_main, c_sum = Module9_Cash_Report(st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.cash_df = c_main
+    st.session_state.cash_summary = c_sum
+    st.session_state.transactions_df = Module10_Transactions_Report(st.session_state.fifo_df, selected_year)
+    portfolio_df, curr_percent, curr_value = Module11_Portfolio(st.session_state.fifo_df, st.session_state.rates_data)
+    st.session_state.portfolio_df = portfolio_df
+    st.session_state.portfolio_currency_percent = curr_percent
+    st.session_state.portfolio_currency_value = curr_value
+    akcje, dyw, zg = Module12_PIT38_Report(st.session_state.fifo_df, st.session_state.finance_df, st.session_state.rates_data, selected_year)
+    st.session_state.pit38_akcje = akcje
+    st.session_state.pit38_dywidendy = dyw
+    st.session_state.pit38_zg = zg
+    st.session_state.selected_year = selected_year
+
+def render_global_year_selector():
+    if st.session_state.fifo_df is None and st.session_state.finance_df is None:
+        return
+    years = set()
+    if st.session_state.fifo_df is not None and not st.session_state.fifo_df.empty:
+        years.update(st.session_state.fifo_df['Date'].dt.year.dropna().unique())
+    if st.session_state.finance_df is not None and not st.session_state.finance_df.empty:
+        years.update(pd.to_datetime(st.session_state.finance_df['Date'], errors='coerce').dt.year.dropna().unique())
+    year_options = ["Wszystkie lata"] + sorted([str(y) for y in years])
+    current_index = 0
+    if st.session_state.selected_year in year_options:
+        current_index = year_options.index(st.session_state.selected_year)
+    def on_year_change():
+        new_year = st.session_state.global_year
+        if not st.session_state.get("is_pro", False):
+            st.warning("🔒 Зміна року доступна тільки для PRO-підписників")
+            st.session_state.global_year = st.session_state.selected_year
+        else:
+            if new_year != st.session_state.selected_year:
+                recalculate_reports(new_year)
+    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
+    col_label, col_selector = st.columns([1, 1], vertical_alignment="center", gap="xxsmall")
+    with col_label:
+        st.markdown("**Wybierz rok:**")
+    with col_selector:
+        st.selectbox(
+            label="",
+            options=year_options,
+            key="global_year",
+            index=current_index,
+            on_change=on_year_change,
+            label_visibility="collapsed"
+        )
+
+def render_main_tabs():
+    tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
+    if st.session_state.get('fifo_df') is not None:
+        tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
+    if st.session_state.get('finance_df') is not None:
+        tabs_names.extend(["Tax_Dividend", "Tax_Interest", "Cash", "PIT38"])
+    tabs = st.tabs(tabs_names)
+    for i, name in enumerate(tabs_names):
+        with tabs[i]:
+            if name in st.session_state.broker_data:
+                st.subheader(f"📄 Оригінальні дані: {name}")
+                styled_df = style_dataframe(st.session_state.broker_data.get(name), "BrokerData")
+                st.dataframe(styled_df, use_container_width=True, height="content")
+            elif name == "Rates_NBP":
+                render_Rates_NBP_Tab()
+            elif name == "FIFO_Data":
+                render_FIFO_Data_Tab()
+            elif name == "Finance_Data":
+                render_Finance_Data_Tab()
+            elif name == "Tax_Detailed_Report":
+                render_Tax_Detailed_Report_Tab()
+            elif name == "Tax_Summary_Report":
+                render_Tax_Summary_Report_Tab()
+            elif name == "Tax_Dividend":
+                render_Tax_Dividend_Report_Tab()
+            elif name == "Tax_Interest":
+                render_Tax_Interest_Report_Tab()
+            elif name == "Cash":
+                render_Cash_Report_Tab()
+            elif name == "Transactions":
+                render_Transactions_Report_Tab()
+            elif name == "Portfolio":
+                render_Portfolio_Tab()
+            elif name == "PIT38":
+                render_PIT38_Tab()
 
 # ====================== ЗАПУСК ======================
 render_sidebar()
