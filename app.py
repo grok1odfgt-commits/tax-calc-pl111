@@ -30,48 +30,14 @@ from calc import (
 )
 
 # ====================== CSS — виправлено, щоб зберегти кнопку сайдбару =============================================================================
+# Вставте цей код після st.set_page_config і перед іншим вмістом
 st.markdown("""
 <style>
-    /* Повна висота таблиць */
-    .stDataFrame, div[data-testid="stDataFrame"] {
-        max-height: none !important;
-        height: auto !important;
-    }
-    .ag-theme-streamlit {
-        max-height: none !important;
-        height: auto !important;
-    }
-
-    /* Приховуємо головне меню (три крапки) */
-    [data-testid="stMainMenu"] {
+    /* Приховуємо весь хедер Streamlit */
+    header[data-testid="stHeader"] {
         display: none !important;
     }
-    #MainMenu {
-        display: none !important;
-    }
-
-    /* Приховуємо логотип */
-    [data-testid="stLogo"] {
-        display: none !important;
-    }
-    a[data-testid="stLogo"] {
-        display: none !important;
-    }
-
-    /* Приховуємо декоративну смужку */
-    [data-testid="stDecoration"] {
-        display: none !important;
-    }
-    div[data-testid="stDecoration"] {
-        display: none !important;
-    }
-
-    /* Приховуємо панель інструментів (якщо є) */
-    [data-testid="stToolbar"] {
-        display: none !important;
-    }
-
-    /* Видаляємо верхній відступ контейнера */
+    /* Видаляємо верхні відступи */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -80,6 +46,42 @@ st.markdown("""
         margin-top: -0.5rem;
     }
 </style>
+
+<script>
+    // Створюємо власну кнопку-гамбургер
+    const btn = document.createElement('button');
+    btn.innerHTML = '☰';
+    btn.style.position = 'fixed';
+    btn.style.top = '10px';
+    btn.style.left = '10px';
+    btn.style.zIndex = '1000';
+    btn.style.background = 'transparent';
+    btn.style.border = 'none';
+    btn.style.fontSize = '24px';
+    btn.style.cursor = 'pointer';
+    btn.style.color = '#31333F';
+    
+    // Функція перемикання сайдбару
+    btn.onclick = function() {
+        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar) {
+            // Перевіряємо поточний стан
+            const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
+            if (isCollapsed) {
+                sidebar.style.transform = 'translateX(0)';
+                btn.innerHTML = '☰';
+            } else {
+                sidebar.style.transform = 'translateX(-100%)';
+                btn.innerHTML = '☰'; // можна змінити на іншу іконку, наприклад '✖'
+            }
+        }
+    };
+    
+    // Додаємо кнопку після завантаження DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.appendChild(btn);
+    });
+</script>
 """, unsafe_allow_html=True)
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
 keys = [
