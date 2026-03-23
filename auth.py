@@ -91,25 +91,32 @@ def register_dialog():
             except Exception as e:
                 st.error(f"Помилка реєстрації: {e}")
 
-# ====================== СТАТУС + КНОПКИ В SIDEBAR ======================
-def show_auth_status_and_logout():
+# ====================== СТАТУС + КНОПКИ (ДЛЯ ГОРИЗОНТАЛЬНОЇ ПАНЕЛІ) ======================
+def render_auth_header():
+    """
+    Повертає HTML та колонки для відображення статусу користувача та кнопок.
+    Викликається в app.py у верхній частині.
+    """
     if st.session_state.authenticated and st.session_state.user:
         status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-        st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
-        st.sidebar.markdown(f"**Статус:** {status}")
-        if st.sidebar.button("🚪 Вийти", use_container_width=True, type="secondary"):
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col2:
+            st.markdown(f"**{st.session_state.user.email}**")
+        with col3:
+            st.markdown(f"**{status}**")
+        # Кнопка виходу
+        if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
             supabase.auth.sign_out()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
     else:
-        st.sidebar.markdown("**🔓 Гість (free-режим)**")
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            if st.button("🔑 Увійти", use_container_width=True):
-                login_dialog()
+        col1, col2, col3 = st.columns([3, 1, 1])
         with col2:
-            if st.button("📝 Реєстрація", use_container_width=True):
+            if st.button("🔑 Увійти", key="login_top", use_container_width=True):
+                login_dialog()
+        with col3:
+            if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
                 register_dialog()
 
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE ======================
