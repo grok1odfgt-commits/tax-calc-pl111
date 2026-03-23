@@ -32,24 +32,51 @@ from calc import (
 # ====================== СУЧАСНИЙ CSS ======================
 st.markdown("""
 <style>
-    .stAppHeader { background: transparent; height: 0; }
-    a[data-testid="stLogo"] { display: none; }
-    div[data-testid="stDecoration"] { display: none; }
-    button[data-testid="baseButton-header"] { display: none !important; }
-    .main > div:first-child { padding-top: 0.5rem; }
-    .block-container { padding-top: 1rem; }
-    .stButton > button { border-radius: 8px; font-weight: 600; }
-    h1, h2, h3 { color: #1a3c5e; }
-    .welcome-card {
-        background: linear-gradient(135deg, #f8f9fa, #e9f0ff);
-        padding: 40px;
-        border-radius: 16px;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    /* Повна висота таблиць */
+    .stDataFrame, div[data-testid="stDataFrame"] {
+        max-height: none !important;
+        height: auto !important;
+    }
+    .ag-theme-streamlit {
+        max-height: none !important;
+        height: auto !important;
+    }
+    .ag-theme-streamlit .ag-body-viewport,
+    .ag-theme-streamlit .ag-center-cols-viewport {
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    /* Приховуємо весь хедер, але залишаємо кнопку сайдбару видимою */
+    header[data-testid="stHeader"] {
+        height: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+    }
+    /* Приховуємо все, що знаходиться всередині хедера, крім кнопки сайдбару */
+    header[data-testid="stHeader"] > *:not([data-testid="stSidebarCollapseButton"]) {
+        display: none !important;
+    }
+    /* Фіксуємо кнопку сайдбару у верхньому лівому куті */
+    [data-testid="stSidebarCollapseButton"] {
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 1000 !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+    }
+    /* Видаляємо верхні відступи контейнера */
+    .main > div:first-child {
+        padding-top: 0rem;
+    }
+    .block-container {
+        padding-top: 0rem;
+        margin-top: -0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
-
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
