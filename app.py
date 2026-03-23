@@ -33,11 +33,42 @@ from calc import (
 # Приховуємо хедер Streamlit і додаємо власні кнопки керування сайдбаром
 st.markdown("""
 <style>
-    /* Повністю приховуємо хедер (звідти зникнуть усі зайві елементи) */
+    /* Повна висота таблиць */
+    .stDataFrame, div[data-testid="stDataFrame"] {
+        max-height: none !important;
+        height: auto !important;
+    }
+    .ag-theme-streamlit {
+        max-height: none !important;
+        height: auto !important;
+    }
+    .ag-theme-streamlit .ag-body-viewport,
+    .ag-theme-streamlit .ag-center-cols-viewport {
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    /* Приховуємо весь хедер, але залишаємо кнопку сайдбару видимою */
     header[data-testid="stHeader"] {
+        height: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+    }
+    /* Приховуємо все, що знаходиться всередині хедера, крім кнопки сайдбару */
+    header[data-testid="stHeader"] > *:not([data-testid="stSidebarCollapseButton"]) {
         display: none !important;
     }
-    /* Видаляємо відступи, щоб контент не зміщувався */
+    /* Фіксуємо кнопку сайдбару у верхньому лівому куті */
+    [data-testid="stSidebarCollapseButton"] {
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 1000 !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+    }
+    /* Видаляємо верхні відступи контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -45,72 +76,7 @@ st.markdown("""
         padding-top: 0rem;
         margin-top: -0.5rem;
     }
-    /* Стилізація власних кнопок */
-    #collapse-sidebar-btn, #expand-sidebar-btn {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 1000;
-        background: #f0f2f6;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 20px;
-        cursor: pointer;
-        padding: 4px 8px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        transition: background 0.2s;
-    }
-    #collapse-sidebar-btn:hover, #expand-sidebar-btn:hover {
-        background: #e0e2e6;
-    }
 </style>
-
-<script>
-    function setupSidebarButtons() {
-        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
-        if (!sidebar) return;
-        
-        // Кнопка згортання (гамбургер)
-        const collapseBtn = document.createElement('button');
-        collapseBtn.id = 'collapse-sidebar-btn';
-        collapseBtn.innerHTML = '☰';
-        
-        // Кнопка розгортання (стрілка)
-        const expandBtn = document.createElement('button');
-        expandBtn.id = 'expand-sidebar-btn';
-        expandBtn.innerHTML = '►';
-        expandBtn.style.display = 'none';
-        
-        collapseBtn.onclick = () => {
-            sidebar.style.transform = 'translateX(-100%)';
-            updateButtons();
-        };
-        expandBtn.onclick = () => {
-            sidebar.style.transform = 'translateX(0)';
-            updateButtons();
-        };
-        
-        document.body.appendChild(collapseBtn);
-        document.body.appendChild(expandBtn);
-        
-        function updateButtons() {
-            const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
-            collapseBtn.style.display = isCollapsed ? 'none' : 'flex';
-            expandBtn.style.display = isCollapsed ? 'flex' : 'none';
-        }
-        
-        // Стежимо за змінами стану сайдбару
-        const observer = new MutationObserver(updateButtons);
-        observer.observe(sidebar, { attributes: true, attributeFilter: ['style'] });
-        updateButtons();
-    }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupSidebarButtons);
-    } else {
-        setupSidebarButtons();
-    }
-</script>
 """, unsafe_allow_html=True)
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
 keys = [
