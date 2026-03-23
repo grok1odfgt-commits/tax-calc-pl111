@@ -29,15 +29,15 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== СУЧАСНИЙ CSS + КАСТОМ TOP-BAR ======================
+# ====================== СУЧАСНИЙ CSS ======================
 st.markdown("""
 <style>
-    /* Повністю прибираємо стандартний header Streamlit (три крапки, логотип тощо) */
+    /* Повністю прибираємо стандартний header Streamlit */
     header[data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* Залишаємо та стилізуємо кнопку розгортання/згортання sidebar */
+    /* Залишаємо та стилізуємо кнопку розгортання sidebar */
     button[data-testid="collapsedControl"] {
         display: block !important;
         visibility: visible !important;
@@ -61,12 +61,12 @@ st.markdown("""
         transform: scale(1.05);
     }
 
-    /* Коли sidebar розгорнутий — кнопка закриття (X) залишається */
+    /* Кнопка закриття sidebar коли розгорнутий */
     section[data-testid="stSidebar"][aria-expanded="true"] button {
         display: block !important;
     }
 
-    /* Прибираємо будь-які інші кнопки в хедері, крім collapsedControl */
+    /* Прибираємо зайві кнопки в хедері */
     button[data-testid^="baseButton-header"],
     button[kind="header"]:not([data-testid="collapsedControl"]),
     button[aria-label*="menu"],
@@ -74,7 +74,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* Відступи зверху для контенту (враховуємо top-bar + кнопку) */
+    /* Відступи для контенту під top-bar і кнопкою */
     .main > div:first-child {
         padding-top: 70px !important;
     }
@@ -84,7 +84,7 @@ st.markdown("""
         padding-right: 1rem !important;
     }
 
-    /* На мобільних пристроях робимо кнопку розгортання більшою та помітнішою */
+    /* Мобільна адаптація кнопки розгортання */
     @media (max-width: 768px) {
         button[data-testid="collapsedControl"] {
             top: 16px !important;
@@ -97,7 +97,6 @@ st.markdown("""
             border: none !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
         }
-
         .main > div:first-child {
             padding-top: 80px !important;
         }
@@ -120,35 +119,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Кастомний fixed top-bar
-# Кастомний fixed top-bar (виправлений без помилок у f-string)
-# Кастомний fixed top-bar — виправлений варіант без синтаксичних помилок
-# Кастомний fixed top-bar — фінальна виправлена версія
-# Кастомний top-bar — максимально чистий і безпечний варіант
-status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
-user_info = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"
+# ====================== КАСТОМНИЙ TOP-BAR (виправлений, без видимого коду) ======================
+status_text = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
+user_text = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"
 
-logout_button = ""
+logout_button_html = ""
 if st.session_state.get("authenticated", False):
-    logout_button = '''
-        <button id="top-logout" style="
-            background: rgba(255,255,255,0.18);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.4);
-            padding: 8px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.98rem;
-            transition: all 0.18s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 36px;
-        ">Вийти</button>
-    '''
+    logout_button_html = (
+        '<button id="top-logout-btn" style="'
+        'background: rgba(255,255,255,0.18); '
+        'color: white; '
+        'border: 1px solid rgba(255,255,255,0.4); '
+        'padding: 8px 18px; '
+        'border-radius: 6px; '
+        'cursor: pointer; '
+        'font-weight: 600; '
+        'font-size: 0.98rem; '
+        'transition: all 0.18s; '
+        'display: flex; '
+        'align-items: center; '
+        'justify-content: center; '
+        'height: 36px;"'
+        '>Вийти</button>'
+    )
 
-html = f"""
+top_bar_html = """
 <div style="
     position: fixed;
     top: 0;
@@ -170,30 +165,31 @@ html = f"""
     </div>
     
     <div style="display: flex; align-items: center; gap: 24px;">
-        <span style="font-weight: 600; font-size: 1.05rem;">{status}</span>
-        <span style="font-size: 1.05rem; opacity: 0.95;">{user_info}</span>
-        {logout_button}
+        <span style="font-weight: 600; font-size: 1.05rem;">{0}</span>
+        <span style="font-size: 1.05rem; opacity: 0.95;">{1}</span>
+        {2}
     </div>
 </div>
 
 <script>
-    const btn = document.getElementById('top-logout');
-    if (btn) {{
-        btn.addEventListener('click', () => {{
+    const btn = document.getElementById('top-logout-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
             const buttons = window.parent.document.querySelectorAll('button');
-            for (let b of buttons) {{
-                if (b.textContent.trim() === 'Вийти') {{
+            for (let b of buttons) {
+                if (b.textContent.trim() === 'Вийти') {
                     b.click();
                     return;
-                }}
-            }}
+                }
+            }
             setTimeout(() => window.parent.location.reload(), 300);
-        }});
-    }}
+        });
+    }
 </script>
-"""
+""".format(status_text, user_text, logout_button_html)
 
-st.markdown(html, unsafe_allow_html=True)
+st.markdown(top_bar_html, unsafe_allow_html=True)
+
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
