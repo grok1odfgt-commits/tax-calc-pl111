@@ -60,6 +60,10 @@ st.markdown("""
     div[data-testid="stDecoration"] {
         display: none;
     }
+    /* Приховуємо кнопку з трьома крапками (меню) */
+    button[data-testid="baseButton-header"] {
+        display: none !important;
+    }
     /* Видаляємо всі верхні відступи контейнера */
     .main > div:first-child {
         padding-top: 0rem;
