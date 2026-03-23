@@ -46,23 +46,36 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Робимо хедер прозорим і без висоти, але залишаємо кнопку */
+    /* Повністю приховуємо хедер, але залишаємо кнопку згортання сайдбару */
     header[data-testid="stHeader"] {
-        background: transparent;
-        height: 0;
-        overflow: visible;
+        height: 0 !important;
+        min-height: 0 !important;
+        background: transparent !important;
+        position: relative !important;
+        overflow: visible !important;
     }
     /* Приховуємо логотип Streamlit */
     a[data-testid="stLogo"] {
-        display: none;
+        display: none !important;
     }
     /* Приховуємо декоративний елемент */
     div[data-testid="stDecoration"] {
-        display: none;
+        display: none !important;
     }
-    /* Приховуємо кнопку з трьома крапками (меню) */
+    /* Приховуємо кнопку з трьома крапками */
     button[data-testid="baseButton-header"] {
         display: none !important;
+    }
+    /* Залишаємо кнопку згортання сайдбару (іконка зліва) */
+    button[kind="icon"] {
+        display: flex !important;
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 1000 !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
     }
     /* Видаляємо всі верхні відступи контейнера */
     .main > div:first-child {
@@ -70,7 +83,7 @@ st.markdown("""
     }
     .block-container {
         padding-top: 0rem;
-        margin-top: -0.5rem;  /* зсуваємо ще трохи, якщо залишився зазор */
+        margin-top: -0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
