@@ -1,5 +1,5 @@
 # ==============================================================================
-# app.py — Головний UI Streamlit-застосунку (НОВИЙ СУЧАСНИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН)
+# app.py — Головний UI Streamlit-застосунку (КАСТОМНІ ХЕДЕР І САЙДБАР)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -8,7 +8,7 @@ import streamlit.components.v1 as components
 from auth import (
     init_auth_session,
     check_subscription_status,
-    render_auth_header,
+    render_top_bar,
     require_pro_for_feature,
     apply_free_limits
 )
@@ -50,45 +50,36 @@ st.markdown("""
     .main > div:first-child { padding-top: 0; }
     .block-container { padding-top: 0.5rem; padding-bottom: 1rem; }
 
-    /* Кастомна вертикальна панель */
-    .custom-vertical-panel {
-        background-color: #f8f9fa;
-        border-radius: 12px;
+    /* Кастомна горизонтальна панель (як оригінальний хедер) */
+    .custom-top-bar {
+        background-color: #ffffff;
+        border-bottom: 1px solid #e9ecef;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: 0.5rem 1rem;
+        margin-bottom: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    /* Кастомна вертикальна панель (як оригінальний сайдбар) */
+    .custom-sidebar {
+        background-color: #f0f2f6;
+        border-right: 1px solid #e9ecef;
         padding: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         height: calc(100vh - 70px);
         overflow-y: auto;
         position: sticky;
-        top: 10px;
+        top: 60px;
     }
 
     /* Зменшені кнопки */
     .stButton button {
         border-radius: 8px;
-        font-size: 0.85rem;
-        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
         font-weight: 500;
         width: 100%;
-    }
-
-    /* Горизонтальна панель */
-    .top-bar {
-        background-color: #ffffff;
-        border-bottom: 1px solid #e9ecef;
-        padding: 0.5rem 1rem;
-        margin-bottom: 1rem;
-        border-radius: 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    /* Адаптивність для мобільних */
-    @media (max-width: 768px) {
-        .custom-vertical-panel {
-            position: static;
-            height: auto;
-            margin-bottom: 1rem;
-        }
-        .stColumns { flex-direction: column; }
     }
 
     /* Стилі для файлового списку */
@@ -112,6 +103,16 @@ st.markdown("""
     .file-delete {
         margin-left: 0.5rem;
         cursor: pointer;
+    }
+
+    /* Адаптивність для мобільних */
+    @media (max-width: 768px) {
+        .custom-sidebar {
+            position: static;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+        .stColumns { flex-direction: column; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -183,7 +184,7 @@ def download_excel(data_dict, default_filename, key_suffix=""):
         key=f"dl_{key_suffix}"
     )
 
-# ====================== ФУНКЦІЇ ВКЛАДОК (без змін) ======================
+# ====================== ФУНКЦІЇ ВКЛАДОК (БЕЗ ЗМІН) ======================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
@@ -520,9 +521,10 @@ def update_file_list():
             if f.name not in [file.name for file in st.session_state.my_files]:
                 st.session_state.my_files.append(f)
 
-def render_vertical_panel():
+def render_custom_sidebar():
+    """Кастомна вертикальна панель, що імітує оригінальний сайдбар."""
     with st.container():
-        st.markdown('<div class="custom-vertical-panel">', unsafe_allow_html=True)
+        st.markdown('<div class="custom-sidebar">', unsafe_allow_html=True)
         st.markdown("**📁 Менеджер файлів**")
 
         # Прихований uploader
@@ -638,7 +640,6 @@ def render_global_year_selector():
         )
 
 def render_main_tabs():
-    # Спочатку перевіряємо, чи є дані
     if st.session_state.broker_data is None:
         return
 
@@ -680,15 +681,15 @@ def render_main_tabs():
 # ====================== ГОЛОВНИЙ РЕНДЕР ======================
 # Горизонтальна панель (зверху)
 with st.container():
-    st.markdown('<div class="top-bar">', unsafe_allow_html=True)
-    render_auth_header()
+    st.markdown('<div class="custom-top-bar">', unsafe_allow_html=True)
+    render_top_bar()
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Основна структура: дві колонки (вертикальна панель + контент)
 col_left, col_right = st.columns([1, 4], gap="medium")
 
 with col_left:
-    render_vertical_panel()
+    render_custom_sidebar()
 
 with col_right:
     if st.session_state.broker_data is not None:
