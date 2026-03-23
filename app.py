@@ -46,25 +46,29 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
+    
     /* Приховуємо логотип Streamlit */
     a[data-testid="stLogo"] {
         display: none !important;
     }
+    
     /* Приховуємо декоративний елемент (смужку зверху) */
     div[data-testid="stDecoration"] {
         display: none !important;
     }
+    
     /* Приховуємо кнопку з трьома крапками (меню) */
     button[data-testid="baseButton-header"] {
         display: none !important;
     }
+    
     /* Видаляємо верхній відступ контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
         padding-top: 0rem;
-        margin-top: -0.5rem;  /* зсуваємо трохи вгору, якщо залишився зазор */
+        margin-top: -0.5rem;  /* трохи зсуваємо контент вгору */
     }
 </style>
 """, unsafe_allow_html=True)
