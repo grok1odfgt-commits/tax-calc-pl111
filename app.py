@@ -42,22 +42,36 @@ st.markdown("""
         height: auto !important;
     }
 
-    /* Приховуємо логотип Streamlit */
+    /* Приховуємо головне меню (три крапки) */
+    [data-testid="stMainMenu"] {
+        display: none !important;
+    }
+    #MainMenu {
+        display: none !important;
+    }
+
+    /* Приховуємо логотип */
+    [data-testid="stLogo"] {
+        display: none !important;
+    }
     a[data-testid="stLogo"] {
         display: none !important;
     }
 
     /* Приховуємо декоративну смужку */
+    [data-testid="stDecoration"] {
+        display: none !important;
+    }
     div[data-testid="stDecoration"] {
         display: none !important;
     }
 
-    /* Приховуємо кнопку з трьома крапками (меню) */
-    button[data-testid="baseButton-header"] {
+    /* Приховуємо панель інструментів (якщо є) */
+    [data-testid="stToolbar"] {
         display: none !important;
     }
 
-    /* Видаляємо зайві верхні відступи */
+    /* Видаляємо верхній відступ контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -66,62 +80,6 @@ st.markdown("""
         margin-top: -0.5rem;
     }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Функція примусового розгортання сайдбару
-    function expandSidebar() {
-        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar) {
-            // Видаляємо всі можливі стилі, що ховають сайдбар
-            sidebar.style.transform = '';
-            sidebar.style.display = '';
-            sidebar.classList.remove('collapsed');
-            // Якщо сайдбар прихований через атрибут style, скидаємо
-            if (sidebar.style.transform === 'translateX(-100%)') {
-                sidebar.style.transform = '';
-            }
-            if (sidebar.style.display === 'none') {
-                sidebar.style.display = '';
-            }
-        }
-    }
-
-    // Шукаємо кнопку-стрілку (з'являється тільки коли сайдбар згорнутий)
-    const observer = new MutationObserver(function(mutations) {
-        const arrowBtn = document.querySelector('header[data-testid="stHeader"] button[kind="icon"]');
-        if (arrowBtn && !arrowBtn._fixed) {
-            arrowBtn._fixed = true;
-            // Замінюємо обробник кліку
-            arrowBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                expandSidebar();
-                return false;
-            });
-            console.log('Arrow button fixed');
-        }
-    });
-
-    // Спостерігаємо за змінами в DOM (кнопка з'являється динамічно)
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Також перевіряємо одразу після завантаження
-    setTimeout(function() {
-        const arrowBtn = document.querySelector('header[data-testid="stHeader"] button[kind="icon"]');
-        if (arrowBtn && !arrowBtn._fixed) {
-            arrowBtn._fixed = true;
-            arrowBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                expandSidebar();
-                return false;
-            });
-            console.log('Arrow button fixed (timeout)');
-        }
-    }, 500);
-});
-</script>
 """, unsafe_allow_html=True)
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
 keys = [
