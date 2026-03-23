@@ -1,12 +1,12 @@
 # ==============================================================================
-# app.py — Головний UI Streamlit-застосунку
+# app.py — Головний UI Streamlit-застосунку (НОВИЙ СУЧАСНИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
 import io
 import streamlit.components.v1 as components
 from auth import (
-    require_auth,
+    init_auth_session,
     show_auth_status_and_logout,
     require_pro_for_feature,
     apply_free_limits,
@@ -29,56 +29,33 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== CSS — виправлено, щоб зберегти кнопку сайдбару =============================================================================
-# Приховуємо хедер Streamlit і додаємо власні кнопки керування сайдбаром
+# ====================== СУЧАСНИЙ CSS ======================
 st.markdown("""
 <style>
-    /* Повна висота таблиць */
-    .stDataFrame, div[data-testid="stDataFrame"] {
-        max-height: none !important;
-        height: auto !important;
-    }
-    .ag-theme-streamlit {
-        max-height: none !important;
-        height: auto !important;
-    }
-    .ag-theme-streamlit .ag-body-viewport,
-    .ag-theme-streamlit .ag-center-cols-viewport {
-        max-height: none !important;
-        height: auto !important;
-    }
-    
-    /* Приховуємо весь хедер, але залишаємо кнопку сайдбару видимою */
-    header[data-testid="stHeader"] {
-        height: 0 !important;
-        overflow: visible !important;
-        background: transparent !important;
-    }
-    /* Приховуємо все, що знаходиться всередині хедера, крім кнопки сайдбару */
-    header[data-testid="stHeader"] > *:not([data-testid="stSidebarCollapseButton"]) {
-        display: none !important;
-    }
-    /* Фіксуємо кнопку сайдбару у верхньому лівому куті */
-    [data-testid="stSidebarCollapseButton"] {
-        position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        z-index: 1000 !important;
-        background: transparent !important;
-        border: none !important;
-        cursor: pointer !important;
-    }
-    /* Видаляємо верхні відступи контейнера */
-    .main > div:first-child {
-        padding-top: 0rem;
-    }
-    .block-container {
-        padding-top: 0rem;
-        margin-top: -0.5rem;
+    .stAppHeader { background: transparent; height: 0; }
+    a[data-testid="stLogo"] { display: none; }
+    div[data-testid="stDecoration"] { display: none; }
+    button[data-testid="baseButton-header"] { display: none !important; }
+    .main > div:first-child { padding-top: 0.5rem; }
+    .block-container { padding-top: 1rem; }
+    .stButton > button { border-radius: 8px; font-weight: 600; }
+    h1, h2, h3 { color: #1a3c5e; }
+    .welcome-card {
+        background: linear-gradient(135deg, #f8f9fa, #e9f0ff);
+        padding: 40px;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
-# ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
+
+# ====================== ІНІЦІАЛІЗАЦІЯ ======================
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
+init_auth_session()
+show_auth_status_and_logout()
+
+# ====================== КЛЮЧІ СЕСІЇ ======================
 keys = [
     'broker_data', 'rates_data', 'fifo_df', 'finance_df', 'report_blocks',
     'sales_summary', 'profit_summary', 'summary_df', 'summary_sales', 'summary_profit',
@@ -93,7 +70,7 @@ for key in keys:
     if key not in st.session_state:
         st.session_state[key] = None if key != 'selected_year' else "Wszystkie lata"
 
-# ====================== ДОПОМІЖНІ ФУНКЦІЇ UI ======================
+# ====================== ДОПОМІЖНІ ФУНКЦІЇ ======================
 def show_no_data_message(section_name=""):
     msg = "✅ Dane zostały obliczone, ale za wybrany rok brak operacji tego typu."
     if section_name:
@@ -107,8 +84,7 @@ def style_dataframe(df, tab_name):
         return df
     cols_4dec = ["Kurs NBP", "Kurs", "Kurs (USD)", "Koszt sredni", "Kurs NBP (D-1)"]
     cols_percent = ["Stawka zr. %", "Waga %", "Udział %"]
-    styler = df.style
-    styler = styler.set_properties(**{'text-align': 'center'})
+    styler = df.style.set_properties(**{'text-align': 'center'})
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     for col in numeric_cols:
         if col in cols_4dec:
@@ -120,7 +96,6 @@ def style_dataframe(df, tab_name):
     return styler
 
 def download_excel(data_dict, default_filename, key_suffix=""):
-    """Універсальна функція для завантаження Excel."""
     if not st.session_state.get("is_pro", False):
         st.warning("🔒 Завантаження доступне тільки для PRO-підписників")
         return
@@ -128,7 +103,6 @@ def download_excel(data_dict, default_filename, key_suffix=""):
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in data_dict.items():
             if df is not None and not df.empty:
-                # Обрізаємо назву аркуша до 31 символу (обмеження Excel)
                 df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
     output.seek(0)
     st.download_button(
@@ -139,7 +113,7 @@ def download_excel(data_dict, default_filename, key_suffix=""):
         key=f"dl_{key_suffix}"
     )
 
-# ====================== ВСІ ФУНКЦІЇ ВІДОБРАЖЕННЯ ВКЛАДОК ======================
+# ====================== ФУНКЦІЇ ВКЛАДОК ======================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
@@ -202,7 +176,6 @@ def render_Tax_Detailed_Report_Tab():
             st.dataframe(block, use_container_width=True, height="content")
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Detailed Report)", key="dl_tax_detailed"):
-        # Об'єднуємо всі блоки в один DataFrame (якщо вони існують)
         all_blocks = pd.concat(blocks, ignore_index=True) if blocks else pd.DataFrame()
         download_excel({
             "Blocks": all_blocks,
@@ -442,7 +415,6 @@ def render_PIT38_Tab():
         st.dataframe(dyw_display, hide_index=True, height="content")
     st.markdown("**PIT-38 - Podatek do zaplaty**")
     if st.session_state.get("is_pro", False):
-        # Безпечне отримання значень
         akcje_wartosc = safe_get_loc(akcje, 12, "Wartosc")
         dyw_wartosc = safe_get_loc(st.session_state.pit38_dywidendy, 4, "Wartosc")
         podatek_do_zaplaty = max(0, akcje_wartosc + dyw_wartosc)
@@ -486,19 +458,22 @@ def render_sidebar():
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
             div[data-testid="stSidebar"] .stButton button { width: 100% !important; }
-            section[data-testid="stSidebar"] p { font-size: 15px !important; line-height: 1.4 !important; }
         </style>
         """, unsafe_allow_html=True)
+
         if "my_files" not in st.session_state:
             st.session_state.my_files = []
+
         st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader",
                          label_visibility="collapsed", on_change=update_file_list)
+
         if st.button("📁 Додати файли (CSV)", type="primary", use_container_width=True):
             components.html("""
                 <script>
                     window.parent.document.querySelector('input[type="file"]').click();
                 </script>
             """, height=0)
+
         if st.session_state.my_files:
             st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
             for i, file in enumerate(st.session_state.my_files):
@@ -522,7 +497,6 @@ def render_sidebar():
                 st.rerun()
         else:
             st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
-    return st.session_state.my_files
 
 # ====================== ОБРОБКА ЗМІНИ РОКУ ТА ПЕРЕРАХУНОК ======================
 def recalculate_reports(selected_year):
@@ -629,14 +603,21 @@ def render_main_tabs():
                 render_PIT38_Tab()
 
 # ====================== ЗАПУСК ======================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
-require_auth()
-check_subscription_status()
-show_auth_status_and_logout()
-uploaded_files = render_sidebar()
+render_sidebar()
+
 if st.session_state.broker_data is not None:
     render_global_year_selector()
     render_main_tabs()
 else:
-    st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
-    st.info("Будь ласка, завантажте CSV файли брокера та натисніть «Розрахувати все».")
+    st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
+    st.markdown("""
+    <h1 style="text-align:center;">🧮 FIFO Tax Calculator</h1>
+    <p style="text-align:center; font-size:1.3rem; margin:20px 0;">
+        Сучасний калькулятор податків для інвесторів з Польщі
+    </p>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.info("📥 Завантажте CSV-файли брокера в боковій панелі та натисніть «Розрахувати все»")
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.image("https://picsum.photos/id/1015/800/400", use_column_width=True)
