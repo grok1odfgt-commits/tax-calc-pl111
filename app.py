@@ -46,44 +46,25 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Приховуємо весь хедер, але залишаємо можливість клікати по кнопці */
-    header[data-testid="stHeader"] {
-        background: transparent;
-        height: 0;
-        overflow: visible;
-        pointer-events: none; /* щоб хедер не перехоплював кліки */
-    }
-    /* Робимо першу кнопку в хедері видимою та клікабельною */
-    header[data-testid="stHeader"] button:first-of-type {
-        pointer-events: auto;
-        display: flex !important;
-        position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        z-index: 1000 !important;
-        background: transparent !important;
-        border: none !important;
-        cursor: pointer !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        font-size: 24px !important;
-        color: #31333F !important;
-    }
-    /* Приховуємо всі інші кнопки в хедері */
-    header[data-testid="stHeader"] button:not(:first-of-type) {
+    /* Приховуємо логотип Streamlit */
+    a[data-testid="stLogo"] {
         display: none !important;
     }
-    /* Приховуємо логотип і декорацію */
-    a[data-testid="stLogo"], div[data-testid="stDecoration"] {
+    /* Приховуємо декоративний елемент (смужку зверху) */
+    div[data-testid="stDecoration"] {
         display: none !important;
     }
-    /* Видаляємо верхні відступи */
+    /* Приховуємо кнопку з трьома крапками (меню) */
+    button[data-testid="baseButton-header"] {
+        display: none !important;
+    }
+    /* Видаляємо верхній відступ контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
         padding-top: 0rem;
-        margin-top: -0.5rem;
+        margin-top: -0.5rem;  /* зсуваємо трохи вгору, якщо залишився зазор */
     }
 </style>
 """, unsafe_allow_html=True)
