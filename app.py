@@ -1,5 +1,5 @@
 # ==============================================================================
-# app.py — НОВИЙ СУЧАСНИЙ ДИЗАЙН (кастомний топ-бар + фіксована вертикальна панель)
+# app.py — Головний UI Streamlit-застосунку (НОВИЙ СУЧАСНИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -7,10 +7,12 @@ import io
 import streamlit.components.v1 as components
 from auth import (
     init_auth_session,
-    login_dialog,
-    register_dialog,
-    check_subscription_status
+    check_subscription_status,
+    render_auth_header,
+    require_pro_for_feature,
+    apply_free_limits
 )
+# Імпортуємо всі функції з бекенду
 from calc import (
     Module1_Data_Import,
     Module2_Currency_Rates,
@@ -27,7 +29,7 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== КОНФІГУРАЦІЯ ======================
+# ====================== КОНФІГУРАЦІЯ СТОРІНКИ ======================
 st.set_page_config(
     layout="wide",
     page_title="FIFO Tax Calculator",
@@ -35,74 +37,88 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ====================== СУЧАСНИЙ CSS ======================
+# ====================== CSS ДЛЯ ПРИХОВУВАННЯ СТАНДАРТНИХ ЕЛЕМЕНТІВ І СТИЛІЗАЦІЇ ======================
 st.markdown("""
 <style>
-    /* Приховуємо стандартний хедер, сайдбар, меню, футер */
-    .stAppHeader, div[data-testid="stDecoration"], button[data-testid="baseButton-header"], 
-    .stSidebar, footer, [data-testid="stToolbar"] { display: none !important; }
-    
-    /* Основний контейнер */
-    .main { padding-top: 0 !important; }
-    .block-container { padding-top: 0 !important; padding-left: 1rem; padding-right: 1rem; }
-    
-    /* Топ-бар */
-    .custom-topbar {
-        background: linear-gradient(135deg, #1a3c5e, #2c5f8c);
-        color: white;
-        padding: 12px 25px;
-        border-radius: 0 0 12px 12px;
-        position: sticky;
-        top: 0;
-        z-index: 999;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .topbar-title { font-size: 1.75rem; font-weight: 700; margin: 0; }
-    
-    /* Вертикальна панель файлів */
-    .file-panel {
-        background: #f8f9fa;
-        border-right: 1px solid #e0e0e0;
-        height: calc(100vh - 68px);
-        position: sticky;
-        top: 68px;
+    /* Повне приховування стандартного хедера та сайдбару */
+    .stAppHeader { display: none !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+    button[data-testid="baseButton-header"] { display: none !important; }
+    div[data-testid="stDecoration"] { display: none; }
+
+    /* Основна структура */
+    .main > div:first-child { padding-top: 0; }
+    .block-container { padding-top: 0.5rem; padding-bottom: 1rem; }
+
+    /* Кастомна вертикальна панель */
+    .custom-vertical-panel {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        height: calc(100vh - 70px);
         overflow-y: auto;
-        padding: 20px 15px;
-        border-radius: 0 12px 12px 0;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 10px;
     }
-    
-    /* Кнопки */
-    .stButton > button {
+
+    /* Зменшені кнопки */
+    .stButton button {
         border-radius: 8px;
-        font-size: 0.92rem;
-        padding: 0.45rem 0.9rem;
-        width: 100%;
-        margin-bottom: 8px;
-    }
-    .small-btn > button {
-        padding: 0.35rem 0.75rem;
         font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        font-weight: 500;
+        width: 100%;
     }
-    
-    /* Адаптивність */
-    @media (max-width: 900px) {
-        .file-panel { position: relative; height: auto; border-radius: 12px; margin-bottom: 15px; }
-        .stColumn { width: 100% !important; }
+
+    /* Горизонтальна панель */
+    .top-bar {
+        background-color: #ffffff;
+        border-bottom: 1px solid #e9ecef;
+        padding: 0.5rem 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    
-    /* Стиль таблиць */
-    .dataframe { border-radius: 10px; overflow: hidden; }
+
+    /* Адаптивність для мобільних */
+    @media (max-width: 768px) {
+        .custom-vertical-panel {
+            position: static;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+        .stColumns { flex-direction: column; }
+    }
+
+    /* Стилі для файлового списку */
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 0.3rem 0.5rem;
+        margin-bottom: 0.3rem;
+        border-radius: 6px;
+        border: 1px solid #e9ecef;
+        font-size: 0.8rem;
+    }
+    .file-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+    }
+    .file-delete {
+        margin-left: 0.5rem;
+        cursor: pointer;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
 init_auth_session()
-if st.session_state.authenticated and st.session_state.user:
-    check_subscription_status()
+check_subscription_status()
 
 # ====================== КЛЮЧІ СЕСІЇ ======================
 keys = [
@@ -113,95 +129,16 @@ keys = [
     'cash_df', 'cash_summary', 'transactions_df',
     'portfolio_df', 'portfolio_currency_percent', 'portfolio_currency_value',
     'pit38_akcje', 'pit38_dywidendy', 'pit38_zg',
-    'selected_year'
+    'selected_year', 'my_files'
 ]
 for key in keys:
     if key not in st.session_state:
-        st.session_state[key] = None if key != 'selected_year' else "Wszystkie lata"
-
-if 'my_files' not in st.session_state:
-    st.session_state.my_files = []
-
-# ====================== ТОП-БАР ======================
-def render_top_bar():
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown('<div class="custom-topbar"><div class="topbar-title">🧮 FIFO Tax Calculator</div></div>', unsafe_allow_html=True)
-    
-    with col2:
-        if st.session_state.authenticated and st.session_state.user:
-            status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            st.markdown(f"""
-            <div style="background:#ffffff; padding:8px 15px; border-radius:10px; 
-                        box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:right; margin-top:8px;">
-                <small style="color:#666;">{st.session_state.user.email}</small><br>
-                <strong style="color:#1a3c5e;">{status}</strong>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
-                st.session_state.authenticated = False
-                st.session_state.user = None
-                st.session_state.is_pro = False
-                st.rerun()
+        if key == 'selected_year':
+            st.session_state[key] = "Wszystkie lata"
+        elif key == 'my_files':
+            st.session_state[key] = []
         else:
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("🔑 Увійти", key="login_top", use_container_width=True):
-                    login_dialog()
-            with c2:
-                if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
-                    register_dialog()
-
-# ====================== ВЕРТИКАЛЬНА ПАНЕЛЬ ФАЙЛІВ ======================
-def render_file_panel():
-    with st.container():
-        st.markdown('<div class="file-panel">', unsafe_allow_html=True)
-        st.subheader("📁 Файли")
-        
-        st.markdown("""
-        <style> div[data-testid="stFileUploader"] { display: none !important; } </style>
-        """, unsafe_allow_html=True)
-        new_files = st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader", label_visibility="collapsed")
-        
-        if new_files:
-            for f in new_files:
-                if f.name not in [file.name for file in st.session_state.my_files]:
-                    st.session_state.my_files.append(f)
-            st.rerun()
-        
-        if st.button("📥 Додати файли (CSV)", type="primary", use_container_width=True):
-            components.html("""
-                <script>
-                    window.parent.document.querySelector('input[type="file"]').click();
-                </script>
-            """, height=0)
-        
-        if st.session_state.my_files:
-            st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
-            for i, file in enumerate(st.session_state.my_files):
-                col1, col2 = st.columns([0.78, 0.22])
-                size_kb = round(file.size / 1024, 1)
-                col1.write(f"📄 **{file.name}** \n({size_kb} KB)")
-                if col2.button("❌", key=f"del_{i}"):
-                    st.session_state.my_files.pop(i)
-                    st.rerun()
-            if st.button("🗑️ Очистити всі", use_container_width=True):
-                st.session_state.my_files.clear()
-                st.rerun()
-            if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
-                with st.spinner("Виконується повний розрахунок за всі роки..."):
-                    st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
-                    st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
-                    st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
-                    st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
-                    recalculate_reports("Wszystkie lata")
-                st.success("✅ Усе розраховано!")
-                st.rerun()
-        else:
-            st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.session_state[key] = None
 
 # ====================== ДОПОМІЖНІ ФУНКЦІЇ ======================
 def show_no_data_message(section_name=""):
@@ -246,7 +183,7 @@ def download_excel(data_dict, default_filename, key_suffix=""):
         key=f"dl_{key_suffix}"
     )
 
-# ====================== ФУНКЦІЇ ВКЛАДОК ======================
+# ====================== ФУНКЦІЇ ВКЛАДОК (без змін) ======================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
@@ -301,8 +238,9 @@ def render_Tax_Detailed_Report_Tab():
         if block.empty:
             continue
         if st.session_state.get("is_pro", False):
-            limited_block = block.copy()
+            limited_block = apply_free_limits(block, "Tax_Detailed_Report")
             styled = style_dataframe(limited_block, "Tax_Detailed_Report")
+            styled = styled.set_table_styles([{'selector': 'tr:last-child td:nth-child(n+2):nth-child(-n+10)', 'props': [('display', 'none')]}])
             st.dataframe(styled, use_container_width=True, height="content")
         else:
             st.dataframe(block, use_container_width=True, height="content")
@@ -343,7 +281,7 @@ def render_Tax_Summary_Report_Tab():
                 return styles
             st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     st.markdown("**Детальна таблиця продажів**")
-    limited_df = df.copy()
+    limited_df = apply_free_limits(df, "Tax_Summary_Report")
     if not st.session_state.get("is_pro", False):
         st.dataframe(limited_df, use_container_width=True, height="content")
         if len(df) > 5:
@@ -390,7 +328,7 @@ def render_Tax_Dividend_Report_Tab():
                 return styles
             st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     st.markdown("**Детальна таблиця дивідендів**")
-    limited_df = df.copy()
+    limited_df = apply_free_limits(df, "Tax_Dividend")
     if not st.session_state.get("is_pro", False):
         st.dataframe(limited_df, use_container_width=True, height="content")
         if len(df) > 3:
@@ -429,7 +367,7 @@ def render_Tax_Interest_Report_Tab():
         else:
             st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
     st.markdown("**Детальна таблиця відсотків**")
-    limited_df = df.copy()
+    limited_df = apply_free_limits(df, "Tax_Interest")
     if not st.session_state.get("is_pro", False):
         st.dataframe(limited_df, use_container_width=True, height="content")
         if len(df) > 3:
@@ -529,9 +467,9 @@ def render_PIT38_Tab():
         dyw_display = st.session_state.pit38_dywidendy
         zg_display = st.session_state.pit38_zg
     else:
-        akcje_display = akcje.copy()
-        dyw_display = st.session_state.pit38_dywidendy.copy() if st.session_state.pit38_dywidendy is not None else pd.DataFrame()
-        zg_display = st.session_state.pit38_zg.copy() if st.session_state.pit38_zg is not None else pd.DataFrame()
+        akcje_display = apply_free_limits(akcje, "PIT38")
+        dyw_display = apply_free_limits(st.session_state.pit38_dywidendy, "PIT38")
+        zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
         st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
     st.markdown("**PIT-38 - Akcje i Koszty**")
     if st.session_state.get("is_pro", False):
@@ -548,7 +486,7 @@ def render_PIT38_Tab():
     st.markdown("**PIT-38 - Podatek do zaplaty**")
     if st.session_state.get("is_pro", False):
         akcje_wartosc = safe_get_loc(akcje, 12, "Wartosc")
-        dyw_wartosc = safe_get_loc(st.session_state.pit38_dywidendy, 4, "Wartosc") if st.session_state.pit38_dywidendy is not None else 0
+        dyw_wartosc = safe_get_loc(st.session_state.pit38_dywidendy, 4, "Wartosc")
         podatek_do_zaplaty = max(0, akcje_wartosc + dyw_wartosc)
         podatek_df = pd.DataFrame({
             "Komorka": ["G.51"],
@@ -574,7 +512,64 @@ def render_PIT38_Tab():
             "PIT_ZG": st.session_state.pit38_zg
         }, "PIT-38", "pit38")
 
-# ====================== ОБРОБКА ЗМІНИ РОКУ ======================
+# ====================== ФУНКЦІЇ ДЛЯ ВЕРТИКАЛЬНОЇ ПАНЕЛІ (ФАЙЛИ) ======================
+def update_file_list():
+    new_files = st.session_state.hidden_uploader
+    if new_files:
+        for f in new_files:
+            if f.name not in [file.name for file in st.session_state.my_files]:
+                st.session_state.my_files.append(f)
+
+def render_vertical_panel():
+    with st.container():
+        st.markdown('<div class="custom-vertical-panel">', unsafe_allow_html=True)
+        st.markdown("**📁 Менеджер файлів**")
+
+        # Прихований uploader
+        st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader",
+                         label_visibility="collapsed", on_change=update_file_list)
+
+        # Кнопка "Додати файли"
+        if st.button("📂 Додати файли (CSV)", type="primary", use_container_width=True):
+            components.html("""
+                <script>
+                    window.parent.document.querySelector('input[type="file"]').click();
+                </script>
+            """, height=0)
+
+        # Список файлів
+        if st.session_state.my_files:
+            st.markdown(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
+            for i, file in enumerate(st.session_state.my_files):
+                size_kb = round(file.size / 1024, 1)
+                col1, col2 = st.columns([0.85, 0.15])
+                with col1:
+                    st.write(f"📄 {file.name} ({size_kb} KB)")
+                with col2:
+                    if st.button("❌", key=f"del_{i}", help="Видалити"):
+                        st.session_state.my_files.pop(i)
+                        st.rerun()
+
+            # Кнопка очистити всі
+            if st.button("🗑️ Очистити всі", use_container_width=True):
+                st.session_state.my_files.clear()
+                st.rerun()
+
+            # Кнопка розрахувати
+            if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
+                with st.spinner("Виконується повний розрахунок за всі роки..."):
+                    st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
+                    st.session_state.rates_data = Module2_Currency_Rates(st.session_state.rates_data)
+                    st.session_state.fifo_df = Module3_FIFO_Data_Compiler(st.session_state.broker_data, st.session_state.rates_data)
+                    st.session_state.finance_df = Module4_Finance_Data_Compiler(st.session_state.broker_data)
+                    recalculate_reports("Wszystkie lata")
+                st.success("✅ Усе розраховано!")
+                st.rerun()
+        else:
+            st.info("Завантажте CSV-файли брокера")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ====================== ОБРОБКА ЗМІНИ РОКУ ТА ПЕРЕРАХУНОК ======================
 def recalculate_reports(selected_year):
     if st.session_state.fifo_df is None or st.session_state.finance_df is None:
         return
@@ -643,6 +638,10 @@ def render_global_year_selector():
         )
 
 def render_main_tabs():
+    # Спочатку перевіряємо, чи є дані
+    if st.session_state.broker_data is None:
+        return
+
     tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
     if st.session_state.get('fifo_df') is not None:
         tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
@@ -678,30 +677,34 @@ def render_main_tabs():
             elif name == "PIT38":
                 render_PIT38_Tab()
 
-# ====================== ЗАПУСК ======================
-render_top_bar()
+# ====================== ГОЛОВНИЙ РЕНДЕР ======================
+# Горизонтальна панель (зверху)
+with st.container():
+    st.markdown('<div class="top-bar">', unsafe_allow_html=True)
+    render_auth_header()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if st.session_state.my_files or st.session_state.broker_data is not None:
-    col_left, col_main = st.columns([0.20, 0.80])
-    
-    with col_left:
-        render_file_panel()
-    
-    with col_main:
-        if st.session_state.broker_data is not None:
-            render_global_year_selector()
-            render_main_tabs()
-        else:
-            st.info("Завантажте файли та натисніть «Розрахувати все»")
-else:
-    st.markdown("""
-    <div style="text-align:center; padding:60px 20px; background:linear-gradient(135deg,#f8f9fa,#e9f0ff); 
-                border-radius:16px; margin-top:20px;">
-        <h1 style="font-size:2.8rem; color:#1a3c5e;">🧮 FIFO Tax Calculator</h1>
-        <p style="font-size:1.4rem;">Сучасний калькулятор податків для інвесторів з Польщі</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.info("📥 Завантажте CSV-файли брокера в боковій панелі та натисніть «Розрахувати все»")
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.image("https://picsum.photos/id/1015/800/400", use_column_width=True)
+# Основна структура: дві колонки (вертикальна панель + контент)
+col_left, col_right = st.columns([1, 4], gap="medium")
+
+with col_left:
+    render_vertical_panel()
+
+with col_right:
+    if st.session_state.broker_data is not None:
+        render_global_year_selector()
+        render_main_tabs()
+    else:
+        # Привітальний блок
+        st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
+        st.markdown("""
+        <h1 style="text-align:center;">🧮 FIFO Tax Calculator</h1>
+        <p style="text-align:center; font-size:1.3rem; margin:20px 0;">
+            Сучасний калькулятор податків для інвесторів з Польщі
+        </p>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.info("📥 Завантажте CSV-файли брокера в лівій панелі та натисніть «Розрахувати все»")
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.image("https://picsum.photos/id/1015/800/400", use_column_width=True)
