@@ -91,27 +91,24 @@ def register_dialog():
             except Exception as e:
                 st.error(f"Помилка реєстрації: {e}")
 
-# ====================== СТАТУС + КНОПКИ (ДЛЯ ГОРИЗОНТАЛЬНОЇ ПАНЕЛІ) ======================
-def render_auth_header():
-    """
-    Повертає HTML та колонки для відображення статусу користувача та кнопок.
-    Викликається в app.py у верхній частині.
-    """
+# ====================== ФУНКЦІЯ ДЛЯ ВІДОБРАЖЕННЯ ТОП-БАРУ ======================
+def render_top_bar():
+    """Створює горизонтальну панель з інформацією про користувача та кнопками."""
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        st.markdown("**🧮 FIFO Tax Calculator**")
     if st.session_state.authenticated and st.session_state.user:
-        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-        col1, col2, col3 = st.columns([3, 1, 1])
         with col2:
-            st.markdown(f"**{st.session_state.user.email}**")
+            st.markdown(f"👤 {st.session_state.user.email}")
         with col3:
-            st.markdown(f"**{status}**")
-        # Кнопка виходу
-        if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
-            supabase.auth.sign_out()
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+            status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+            st.markdown(f"{status}")
+            if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
+                supabase.auth.sign_out()
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
     else:
-        col1, col2, col3 = st.columns([3, 1, 1])
         with col2:
             if st.button("🔑 Увійти", key="login_top", use_container_width=True):
                 login_dialog()
