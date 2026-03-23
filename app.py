@@ -46,28 +46,16 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    /* Повністю приховуємо хедер, але залишаємо кнопку згортання сайдбару */
+    /* Приховуємо весь хедер, але залишаємо можливість клікати по кнопці */
     header[data-testid="stHeader"] {
-        height: 0 !important;
-        min-height: 0 !important;
-        background: transparent !important;
-        position: relative !important;
-        overflow: visible !important;
+        background: transparent;
+        height: 0;
+        overflow: visible;
+        pointer-events: none; /* щоб хедер не перехоплював кліки */
     }
-    /* Приховуємо логотип Streamlit */
-    a[data-testid="stLogo"] {
-        display: none !important;
-    }
-    /* Приховуємо декоративний елемент */
-    div[data-testid="stDecoration"] {
-        display: none !important;
-    }
-    /* Приховуємо кнопку з трьома крапками */
-    button[data-testid="baseButton-header"] {
-        display: none !important;
-    }
-    /* Залишаємо кнопку згортання сайдбару (іконка зліва) */
-    button[kind="icon"] {
+    /* Робимо першу кнопку в хедері видимою та клікабельною */
+    header[data-testid="stHeader"] button:first-of-type {
+        pointer-events: auto;
         display: flex !important;
         position: fixed !important;
         top: 10px !important;
@@ -76,8 +64,20 @@ st.markdown("""
         background: transparent !important;
         border: none !important;
         cursor: pointer !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 24px !important;
+        color: #31333F !important;
     }
-    /* Видаляємо всі верхні відступи контейнера */
+    /* Приховуємо всі інші кнопки в хедері */
+    header[data-testid="stHeader"] button:not(:first-of-type) {
+        display: none !important;
+    }
+    /* Приховуємо логотип і декорацію */
+    a[data-testid="stLogo"], div[data-testid="stDecoration"] {
+        display: none !important;
+    }
+    /* Видаляємо верхні відступи */
     .main > div:first-child {
         padding-top: 0rem;
     }
@@ -87,7 +87,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 # ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ ======================
 keys = [
     'broker_data', 'rates_data', 'fifo_df', 'finance_df', 'report_blocks',
