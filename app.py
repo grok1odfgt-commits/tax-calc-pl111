@@ -123,75 +123,76 @@ st.markdown("""
 # Кастомний fixed top-bar
 # Кастомний fixed top-bar (виправлений без помилок у f-string)
 # Кастомний fixed top-bar — виправлений варіант без синтаксичних помилок
-top_bar_html = """
-<div style="
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 56px;
-    background: linear-gradient(90deg, #1e40af, #3b82f6);
-    color: white;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-family: system-ui, sans-serif;
-">
-    <div style="font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px;">
-        🧮 FIFO Tax Calculator
-    </div>
-    <div style="display: flex; align-items: center; gap: 20px; font-size: 1rem;">
-        <span style="font-weight: 600;">{status}</span>
-        <span>{user_info}</span>
-        {logout_button}
-    </div>
-</div>
-
-<script>
-    const logoutBtn = document.getElementById('top-logout-btn');
-    if (logoutBtn) {{
-        logoutBtn.addEventListener('click', function() {{
-            // Шукаємо кнопку "Вийти" у всьому документі
-            const buttons = window.parent.document.querySelectorAll('button');
-            for (let btn of buttons) {{
-                if (btn.textContent.trim().includes('Вийти')) {{
-                    btn.click();
-                    break;
-                }}
-            }}
-            // Якщо не знайшло — перезавантажуємо сторінку
-            setTimeout(() => {{ window.parent.location.reload(); }}, 400);
-        }});
-    }}
-</script>
-"""
-
-# Підготовка змінних для вставки
-status_text = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free"
-user_text = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість"
-
-logout_btn_html = """
-<button id="top-logout-btn" style="
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.4);
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-">Вийти</button>
-""" if st.session_state.get("authenticated", False) else ""
-
-# Вставляємо готовий HTML
+# Кастомний fixed top-bar — фінальна виправлена версія
 st.markdown(
-    top_bar_html.format(
-        status=status_text,
-        user_info=user_text,
-        logout_button=logout_btn_html
+    """
+    <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: linear-gradient(90deg, #1e40af, #3b82f6);
+        color: white;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-family: system-ui, -apple-system, sans-serif;
+    ">
+        <div style="font-size: 1.45rem; font-weight: 700; letter-spacing: -0.4px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.6rem;">🧮</span> FIFO Tax Calculator
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 24px;">
+            <span style="font-weight: 600; font-size: 1.05rem;">
+                {status}
+            </span>
+            <span style="font-size: 1.05rem; opacity: 0.95;">
+                {user_info}
+            </span>
+            {logout_button}
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('top-logout-btn');
+        if (logoutBtn) {{
+            logoutBtn.addEventListener('click', function() {{
+                const buttons = window.parent.document.querySelectorAll('button');
+                for (let btn of buttons) {{
+                    if (btn.textContent.trim() === 'Вийти' || btn.textContent.trim().includes('Вийти')) {{
+                        btn.click();
+                        break;
+                    }}
+                }}
+                setTimeout(() => {{ window.parent.location.reload(); }}, 400);
+            }});
+        }}
+    </script>
+    """.format(
+        status = "✅ PRO" if st.session_state.get("is_pro", False) else "🔓 Free",
+        user_info = f" • {st.session_state.user.email.split('@')[0]}" if st.session_state.get("authenticated", False) else " • Гість",
+        logout_button = '''
+            <button id="top-logout-btn" style="
+                background: rgba(255,255,255,0.18);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.35);
+                padding: 8px 18px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 0.98rem;
+                transition: all 0.18s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 36px;
+                line-height: 1;
+            ">Вийти</button>
+        ''' if st.session_state.get("authenticated", False) else ""
     ),
     unsafe_allow_html=True
 )
