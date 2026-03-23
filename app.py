@@ -29,10 +29,10 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== CSS — виправлено, щоб зберегти кнопку сайдбару ======================
+# ====================== CSS — виправлено, щоб зберегти кнопку сайдбару =============================================================================
 st.markdown("""
 <style>
-    /* Забезпечуємо повну висоту таблиць */
+    /* Повна висота таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -41,38 +41,89 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
-    .ag-theme-streamlit .ag-body-viewport,
-    .ag-theme-streamlit .ag-center-cols-viewport {
-        max-height: none !important;
-        height: auto !important;
-    }
-    
+
     /* Приховуємо логотип Streamlit */
     a[data-testid="stLogo"] {
         display: none !important;
     }
-    
-    /* Приховуємо декоративний елемент (смужку зверху) */
+
+    /* Приховуємо декоративну смужку */
     div[data-testid="stDecoration"] {
         display: none !important;
     }
-    
+
     /* Приховуємо кнопку з трьома крапками (меню) */
     button[data-testid="baseButton-header"] {
         display: none !important;
     }
-    
-    /* Видаляємо верхній відступ контейнера */
+
+    /* Видаляємо зайві верхні відступи */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
         padding-top: 0rem;
-        margin-top: -0.5rem;  /* трохи зсуваємо контент вгору */
+        margin-top: -0.5rem;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функція примусового розгортання сайдбару
+    function expandSidebar() {
+        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar) {
+            // Видаляємо всі можливі стилі, що ховають сайдбар
+            sidebar.style.transform = '';
+            sidebar.style.display = '';
+            sidebar.classList.remove('collapsed');
+            // Якщо сайдбар прихований через атрибут style, скидаємо
+            if (sidebar.style.transform === 'translateX(-100%)') {
+                sidebar.style.transform = '';
+            }
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = '';
+            }
+        }
+    }
+
+    // Шукаємо кнопку-стрілку (з'являється тільки коли сайдбар згорнутий)
+    const observer = new MutationObserver(function(mutations) {
+        const arrowBtn = document.querySelector('header[data-testid="stHeader"] button[kind="icon"]');
+        if (arrowBtn && !arrowBtn._fixed) {
+            arrowBtn._fixed = true;
+            // Замінюємо обробник кліку
+            arrowBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                expandSidebar();
+                return false;
+            });
+            console.log('Arrow button fixed');
+        }
+    });
+
+    // Спостерігаємо за змінами в DOM (кнопка з'являється динамічно)
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Також перевіряємо одразу після завантаження
+    setTimeout(function() {
+        const arrowBtn = document.querySelector('header[data-testid="stHeader"] button[kind="icon"]');
+        if (arrowBtn && !arrowBtn._fixed) {
+            arrowBtn._fixed = true;
+            arrowBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                expandSidebar();
+                return false;
+            });
+            console.log('Arrow button fixed (timeout)');
+        }
+    }, 500);
+});
+</script>
 """, unsafe_allow_html=True)
-# ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ ======================
+# ====================== ІНІЦІАЛІЗАЦІЯ СЕСІЇ =========================================================================================================
 keys = [
     'broker_data', 'rates_data', 'fifo_df', 'finance_df', 'report_blocks',
     'sales_summary', 'profit_summary', 'summary_df', 'summary_sales', 'summary_profit',
