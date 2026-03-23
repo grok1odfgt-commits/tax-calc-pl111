@@ -13,7 +13,7 @@ from auth import (
     check_subscription_status
 )
 # Імпортуємо всі функції з бекенду
-from calc import (
+from tax_calculator import (
     Module1_Data_Import,
     Module2_Currency_Rates,
     Module3_FIFO_Data_Compiler,
@@ -29,9 +29,10 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== CSS ======================
+# ====================== CSS — виправлено, щоб зберегти кнопку сайдбару ======================
 st.markdown("""
 <style>
+    /* Забезпечуємо повну висоту таблиць */
     .stDataFrame, div[data-testid="stDataFrame"] {
         max-height: none !important;
         height: auto !important;
@@ -40,15 +41,32 @@ st.markdown("""
         max-height: none !important;
         height: auto !important;
     }
+    .ag-theme-streamlit .ag-body-viewport,
+    .ag-theme-streamlit .ag-center-cols-viewport {
+        max-height: none !important;
+        height: auto !important;
+    }
+    /* Робимо хедер прозорим і без висоти, але залишаємо кнопку */
     header[data-testid="stHeader"] {
+        background: transparent;
+        height: 0;
+        overflow: visible;
+    }
+    /* Приховуємо логотип Streamlit */
+    a[data-testid="stLogo"] {
         display: none;
     }
+    /* Приховуємо декоративний елемент */
+    div[data-testid="stDecoration"] {
+        display: none;
+    }
+    /* Видаляємо всі верхні відступи контейнера */
     .main > div:first-child {
         padding-top: 0rem;
     }
     .block-container {
         padding-top: 0rem;
-        margin-top: -0.5rem;
+        margin-top: -0.5rem;  /* зсуваємо ще трохи, якщо залишився зазор */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,6 +121,7 @@ def download_excel(data_dict, default_filename, key_suffix=""):
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in data_dict.items():
             if df is not None and not df.empty:
+                # Обрізаємо назву аркуша до 31 символу (обмеження Excel)
                 df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
     output.seek(0)
     st.download_button(
@@ -114,11 +133,6 @@ def download_excel(data_dict, default_filename, key_suffix=""):
     )
 
 # ====================== ВСІ ФУНКЦІЇ ВІДОБРАЖЕННЯ ВКЛАДОК ======================
-# (Тут потрібно скопіювати всі render_*_Tab з оригінального коду,
-#  але замінити виклики стилів на style_dataframe,
-#  та замінити повторювані частини завантаження Excel на виклик download_excel)
-# Для економії місця я покажу лише одну як приклад, але в повному файлі будуть усі.
-
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
@@ -181,13 +195,273 @@ def render_Tax_Detailed_Report_Tab():
             st.dataframe(block, use_container_width=True, height="content")
     st.markdown("---")
     if st.button("📥 Завантажити Excel (Tax Detailed Report)", key="dl_tax_detailed"):
+        # Об'єднуємо всі блоки в один DataFrame (якщо вони існують)
+        all_blocks = pd.concat(blocks, ignore_index=True) if blocks else pd.DataFrame()
         download_excel({
-            "Blocks": pd.concat(blocks) if blocks else pd.DataFrame(),
+            "Blocks": all_blocks,
             "Sales Summary": st.session_state.sales_summary,
             "Profit Summary": st.session_state.profit_summary
         }, "Tax_Detailed_Report", "tax_detailed")
 
-# ... (аналогічно для інших вкладок)
+def render_Tax_Summary_Report_Tab():
+    st.subheader("📊 Tax Report — підсумковий податковий звіт (FIFO Summary)")
+    df = st.session_state.get('summary_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Tax Summary Report")
+        return
+    col1, col2 = st.columns([1.4, 1.6])
+    with col1:
+        st.markdown("**Podsumowanie sprzedaz**")
+        if not st.session_state.get("is_pro", False):
+            st.dataframe(st.session_state.summary_sales, hide_index=True, height="content")
+        else:
+            st.dataframe(st.session_state.summary_sales.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    with col2:
+        st.markdown("**Ogolny profit [PLN]**")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Підсумковий прибуток доступний тільки для PRO-підписників")
+        else:
+            def profit_style(row):
+                styles = [''] * 2
+                if row[" "] == "Przeplyw":
+                    styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
+                return styles
+            st.dataframe(st.session_state.summary_profit.style.apply(profit_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    st.markdown("**Детальна таблиця продажів**")
+    limited_df = apply_free_limits(df, "Tax_Summary_Report")
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 5:
+            st.info("🔒 Показано тільки перші 5 рядків. Для перегляду всіх придбайте PRO-підписку.")
+    else:
+        styled = style_dataframe(limited_df, "Tax_Summary_Report")
+        styled = styled.apply(lambda x: ['color: #006100' if v >= 0 else 'color: #9c0006' for v in x], subset=['Przeplyw PLN'])
+        st.dataframe(styled, use_container_width=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Summary Report)", key="dl_tax_summary"):
+        download_excel({
+            "Summary": st.session_state.summary_df,
+            "Sales Summary": st.session_state.summary_sales,
+            "Profit Summary": st.session_state.summary_profit
+        }, "Tax_Summary_Report", "tax_summary")
+
+def render_Tax_Dividend_Report_Tab():
+    st.subheader("💰 Tax Dividend — податковий звіт по дивідендах")
+    df = st.session_state.get('dividend_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Tax Dividend")
+        return
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Підсумування в валюті**")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.dividend_summary_val.style.set_properties(**{'font-weight': 'bold'}).format({"Value": "{:,.2f}"}), hide_index=True, height="content")
+    with col2:
+        st.markdown("**Підсумування (PLN)**")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            def pln_style(row):
+                styles = [''] * 2
+                if row[" "] in ["Doplata w PL", "Pod. u zrodla"]:
+                    styles = ['color: #9c0006'] * 2
+                elif row[" "] == "Suma Netto":
+                    styles = ['color: #006100'] * 2 if row["Value"] >= 0 else ['color: #9c0006'] * 2
+                return styles
+            st.dataframe(st.session_state.dividend_summary_pln.style.apply(pln_style, axis=1).format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    st.markdown("**Детальна таблиця дивідендів**")
+    limited_df = apply_free_limits(df, "Tax_Dividend")
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 3:
+            st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
+    else:
+        styled = style_dataframe(limited_df, "Tax_Dividend")
+        st.dataframe(styled, use_container_width=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Dividend Report)", key="dl_tax_dividend"):
+        download_excel({
+            "Dividends": st.session_state.dividend_df,
+            "Summary (Val)": st.session_state.dividend_summary_val,
+            "Summary (PLN)": st.session_state.dividend_summary_pln
+        }, "Tax_Dividend", "tax_dividend")
+
+def render_Tax_Interest_Report_Tab():
+    st.subheader("📈 Tax Interest — податковий звіт по відсотках")
+    df = st.session_state.get('interest_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Tax Interest")
+        return
+    col1, col2 = st.columns([1.3, 1.7])
+    with col1:
+        st.markdown("**Podsumowanie (VAL)**")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.interest_summary_val.style.set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    with col2:
+        st.markdown("**Podsumowanie (PLN)**")
+        if not st.session_state.get("is_pro", False):
+            st.info("🔒 Дані приховані")
+        else:
+            st.dataframe(st.session_state.interest_summary_pln.style.format({"Value": "{:,.2f}"}).set_properties(**{'font-weight': 'bold'}), hide_index=True, height="content")
+    st.markdown("**Детальна таблиця відсотків**")
+    limited_df = apply_free_limits(df, "Tax_Interest")
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(limited_df, use_container_width=True, height="content")
+        if len(df) > 3:
+            st.info("🔒 Показано тільки перші 3 рядки. Для перегляду всіх придбайте PRO-підписку.")
+    else:
+        styled = style_dataframe(limited_df, "Tax_Interest")
+        st.dataframe(styled, use_container_width=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Tax Interest Report)", key="dl_tax_interest"):
+        download_excel({
+            "Interest": st.session_state.interest_df,
+            "Summary (Val)": st.session_state.interest_summary_val,
+            "Summary (PLN)": st.session_state.interest_summary_pln
+        }, "Tax_Interest", "tax_interest")
+
+def render_Cash_Report_Tab():
+    st.subheader("💵 Cash Report — рух готівки")
+    df = st.session_state.get('cash_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Cash Report")
+        return
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(df, use_container_width=True, height="content")
+    else:
+        styled = style_dataframe(df, "Cash")
+        st.dataframe(styled, use_container_width=True, height="content")
+    st.markdown("**Підсумки**")
+    st.dataframe(st.session_state.cash_summary, hide_index=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Cash Report)", key="dl_cash"):
+        download_excel({
+            "Cash": st.session_state.cash_df,
+            "Summary": st.session_state.cash_summary
+        }, "Cash_Report", "cash")
+
+def render_Transactions_Report_Tab():
+    st.subheader("📋 Transactions Report")
+    df = st.session_state.get('transactions_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Transactions Report")
+        return
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(df, use_container_width=True, height="content")
+    else:
+        styled = style_dataframe(df, "Transactions")
+        st.dataframe(styled, use_container_width=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Transactions Report)", key="dl_transactions"):
+        download_excel({
+            "Transactions": st.session_state.transactions_df
+        }, "Transactions", "transactions")
+
+def render_Portfolio_Tab():
+    st.subheader("📊 Portfolio — поточний стан портфеля")
+    df = st.session_state.get('portfolio_df')
+    if df is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if df.empty:
+        show_no_data_message("Portfolio")
+        return
+    st.markdown("**Основна таблиця портфеля**")
+    if not st.session_state.get("is_pro", False):
+        st.dataframe(df, use_container_width=True, height="content")
+    else:
+        styled = style_dataframe(df, "Portfolio")
+        st.dataframe(styled, use_container_width=True, height="content")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Структура за валютою (уділ %)**")
+        st.dataframe(st.session_state.portfolio_currency_percent, hide_index=True, height="content")
+    with col2:
+        st.markdown("**Вартість за валютою (оригінальна)**")
+        st.dataframe(st.session_state.portfolio_currency_value, hide_index=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (Portfolio)", key="dl_portfolio"):
+        download_excel({
+            "Portfolio": st.session_state.portfolio_df,
+            "Currency Percent": st.session_state.portfolio_currency_percent,
+            "Currency Value": st.session_state.portfolio_currency_value
+        }, "Portfolio", "portfolio")
+
+def render_PIT38_Tab():
+    st.subheader("📋 PIT-38 — підсумковий податковий звіт")
+    akcje = st.session_state.get('pit38_akcje')
+    if akcje is None:
+        st.info("Натисніть «Розрахувати все» в боковій панелі")
+        return
+    if st.session_state.get("is_pro", False):
+        akcje_display = akcje
+        dyw_display = st.session_state.pit38_dywidendy
+        zg_display = st.session_state.pit38_zg
+    else:
+        akcje_display = apply_free_limits(akcje, "PIT38")
+        dyw_display = apply_free_limits(st.session_state.pit38_dywidendy, "PIT38")
+        zg_display = apply_free_limits(st.session_state.pit38_zg, "PIT38")
+        st.info("🔒 Дані PIT-38 приховані для free-користувачів. Купіть підписку для доступу.")
+    st.markdown("**PIT-38 - Akcje i Koszty**")
+    if st.session_state.get("is_pro", False):
+        styled = style_dataframe(akcje_display, "PIT38")
+        st.dataframe(styled, hide_index=True, height="content")
+    else:
+        st.dataframe(akcje_display, hide_index=True, height="content")
+    st.markdown("**PIT-38 - Dywidendy**")
+    if st.session_state.get("is_pro", False):
+        styled = style_dataframe(dyw_display, "PIT38")
+        st.dataframe(styled, hide_index=True, height="content")
+    else:
+        st.dataframe(dyw_display, hide_index=True, height="content")
+    st.markdown("**PIT-38 - Podatek do zaplaty**")
+    if st.session_state.get("is_pro", False):
+        # Безпечне отримання значень
+        akcje_wartosc = safe_get_loc(akcje, 12, "Wartosc")
+        dyw_wartosc = safe_get_loc(st.session_state.pit38_dywidendy, 4, "Wartosc")
+        podatek_do_zaplaty = max(0, akcje_wartosc + dyw_wartosc)
+        podatek_df = pd.DataFrame({
+            "Komorka": ["G.51"],
+            "Nazwa": ["PODATEK DO ZAPLATY<br>Od sumy kwot z poz. 35, 45, 46 i 49 należy odjąć kwotę z poz. 50. Jeżeli różnica jest liczbą ujemną, należy wpisać 0."],
+            "Wartosc": [podatek_do_zaplaty]
+        })
+        styled = style_dataframe(podatek_df, "PIT38")
+        st.dataframe(styled, hide_index=True, height="content")
+    else:
+        podatek_df = pd.DataFrame({"Komorka": ["G.51"], "Nazwa": ["PODATEK DO ZAPLATY"], "Wartosc": ["X"]})
+        st.dataframe(podatek_df, hide_index=True, height="content")
+    st.markdown("**PIT/ZG — Zagraniczne przychody**")
+    if not st.session_state.get("is_pro", False):
+        st.info("🔒 Дані приховані")
+    else:
+        styled = style_dataframe(zg_display, "PIT38")
+        st.dataframe(styled, hide_index=True, height="content")
+    st.markdown("---")
+    if st.button("📥 Завантажити Excel (PIT-38)", key="dl_pit38"):
+        download_excel({
+            "Akcje": st.session_state.pit38_akcje,
+            "Dywidendy": st.session_state.pit38_dywidendy,
+            "PIT_ZG": st.session_state.pit38_zg
+        }, "PIT-38", "pit38")
 
 # ====================== БОКОВА ПАНЕЛЬ ======================
 def update_file_list():
@@ -332,7 +606,20 @@ def render_main_tabs():
                 render_Finance_Data_Tab()
             elif name == "Tax_Detailed_Report":
                 render_Tax_Detailed_Report_Tab()
-            # ... (решта вкладок аналогічно)
+            elif name == "Tax_Summary_Report":
+                render_Tax_Summary_Report_Tab()
+            elif name == "Tax_Dividend":
+                render_Tax_Dividend_Report_Tab()
+            elif name == "Tax_Interest":
+                render_Tax_Interest_Report_Tab()
+            elif name == "Cash":
+                render_Cash_Report_Tab()
+            elif name == "Transactions":
+                render_Transactions_Report_Tab()
+            elif name == "Portfolio":
+                render_Portfolio_Tab()
+            elif name == "PIT38":
+                render_PIT38_Tab()
 
 # ====================== ЗАПУСК ======================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator")
