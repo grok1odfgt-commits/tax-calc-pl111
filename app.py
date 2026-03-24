@@ -1,5 +1,5 @@
 # ==============================================================================
-# app.py — Головний UI Streamlit-застосунку (КАСТОМНІ ХЕДЕР І САЙДБАР)
+# app.py — Головний UI Streamlit-застосунку (НОВИЙ СУЧАСНИЙ ДИЗАЙН + МОДАЛЬНИЙ ЛОГІН)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -7,10 +7,10 @@ import io
 import streamlit.components.v1 as components
 from auth import (
     init_auth_session,
-    check_subscription_status,
-    render_top_bar,
+    show_auth_status_and_logout,
     require_pro_for_feature,
-    apply_free_limits
+    apply_free_limits,
+    check_subscription_status
 )
 # Імпортуємо всі функції з бекенду
 from calc import (
@@ -29,97 +29,32 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== КОНФІГУРАЦІЯ СТОРІНКИ ======================
-st.set_page_config(
-    layout="wide",
-    page_title="FIFO Tax Calculator",
-    page_icon="🧮",
-    initial_sidebar_state="collapsed"
-)
-
-# ====================== CSS ДЛЯ ПРИХОВУВАННЯ СТАНДАРТНИХ ЕЛЕМЕНТІВ І СТИЛІЗАЦІЇ ======================
+# ====================== СУЧАСНИЙ CSS ======================
 st.markdown("""
 <style>
-    /* Повне приховування стандартного хедера та сайдбару */
-    .stAppHeader { display: none !important; }
-    [data-testid="stSidebar"] { display: none !important; }
-    button[data-testid="baseButton-header"] { display: none !important; }
+    .stAppHeader { background: transparent; height: 0; }
+    a[data-testid="stLogo"] { display: none; }
     div[data-testid="stDecoration"] { display: none; }
-
-    /* Основна структура */
-    .main > div:first-child { padding-top: 0; }
-    .block-container { padding-top: 0.5rem; padding-bottom: 1rem; }
-
-    /* Кастомна горизонтальна панель (як оригінальний хедер) */
-    .custom-top-bar {
-        background-color: #ffffff;
-        border-bottom: 1px solid #e9ecef;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        padding: 0.5rem 1rem;
-        margin-bottom: 1rem;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-    }
-
-    /* Кастомна вертикальна панель (як оригінальний сайдбар) */
-    .custom-sidebar {
-        background-color: #f0f2f6;
-        border-right: 1px solid #e9ecef;
-        padding: 1rem;
-        height: calc(100vh - 70px);
-        overflow-y: auto;
-        position: sticky;
-        top: 60px;
-    }
-
-    /* Зменшені кнопки */
-    .stButton button {
-        border-radius: 8px;
-        font-size: 0.8rem;
-        padding: 0.2rem 0.5rem;
-        font-weight: 500;
-        width: 100%;
-    }
-
-    /* Стилі для файлового списку */
-    .file-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: white;
-        padding: 0.3rem 0.5rem;
-        margin-bottom: 0.3rem;
-        border-radius: 6px;
-        border: 1px solid #e9ecef;
-        font-size: 0.8rem;
-    }
-    .file-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex: 1;
-    }
-    .file-delete {
-        margin-left: 0.5rem;
-        cursor: pointer;
-    }
-
-    /* Адаптивність для мобільних */
-    @media (max-width: 768px) {
-        .custom-sidebar {
-            position: static;
-            height: auto;
-            margin-bottom: 1rem;
-        }
-        .stColumns { flex-direction: column; }
+    button[data-testid="baseButton-header"] { display: none !important; }
+    .main > div:first-child { padding-top: 0.5rem; }
+    .block-container { padding-top: 1rem; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    h1, h2, h3 { color: #1a3c5e; }
+    .welcome-card {
+        background: linear-gradient(135deg, #f8f9fa, #e9f0ff);
+        padding: 40px;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ====================== ІНІЦІАЛІЗАЦІЯ ======================
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
-check_subscription_status()
+show_auth_status_and_logout()
 
 # ====================== КЛЮЧІ СЕСІЇ ======================
 keys = [
@@ -130,16 +65,11 @@ keys = [
     'cash_df', 'cash_summary', 'transactions_df',
     'portfolio_df', 'portfolio_currency_percent', 'portfolio_currency_value',
     'pit38_akcje', 'pit38_dywidendy', 'pit38_zg',
-    'selected_year', 'my_files'
+    'selected_year'
 ]
 for key in keys:
     if key not in st.session_state:
-        if key == 'selected_year':
-            st.session_state[key] = "Wszystkie lata"
-        elif key == 'my_files':
-            st.session_state[key] = []
-        else:
-            st.session_state[key] = None
+        st.session_state[key] = None if key != 'selected_year' else "Wszystkie lata"
 
 # ====================== ДОПОМІЖНІ ФУНКЦІЇ ======================
 def show_no_data_message(section_name=""):
@@ -184,7 +114,7 @@ def download_excel(data_dict, default_filename, key_suffix=""):
         key=f"dl_{key_suffix}"
     )
 
-# ====================== ФУНКЦІЇ ВКЛАДОК (БЕЗ ЗМІН) ======================
+# ====================== ФУНКЦІЇ ВКЛАДОК ======================
 def render_Rates_NBP_Tab():
     st.subheader("📈 Курси валют NBP")
     styled_df = style_dataframe(st.session_state.rates_data, "Rates_NBP")
@@ -513,7 +443,7 @@ def render_PIT38_Tab():
             "PIT_ZG": st.session_state.pit38_zg
         }, "PIT-38", "pit38")
 
-# ====================== ФУНКЦІЇ ДЛЯ ВЕРТИКАЛЬНОЇ ПАНЕЛІ (ФАЙЛИ) ======================
+# ====================== БОКОВА ПАНЕЛЬ ======================
 def update_file_list():
     new_files = st.session_state.hidden_uploader
     if new_files:
@@ -521,43 +451,42 @@ def update_file_list():
             if f.name not in [file.name for file in st.session_state.my_files]:
                 st.session_state.my_files.append(f)
 
-def render_custom_sidebar():
-    """Кастомна вертикальна панель, що імітує оригінальний сайдбар."""
-    with st.container():
-        st.markdown('<div class="custom-sidebar">', unsafe_allow_html=True)
-        st.markdown("**📁 Менеджер файлів**")
+def render_sidebar():
+    with st.sidebar:
+        st.title("🧮 Калькулятор податків FIFO")
+        st.markdown("---")
+        st.markdown("""
+        <style>
+            div[data-testid="stFileUploader"] { display: none !important; }
+            div[data-testid="stSidebar"] .stButton button { width: 100% !important; }
+        </style>
+        """, unsafe_allow_html=True)
 
-        # Прихований uploader
+        if "my_files" not in st.session_state:
+            st.session_state.my_files = []
+
         st.file_uploader(" ", accept_multiple_files=True, key="hidden_uploader",
                          label_visibility="collapsed", on_change=update_file_list)
 
-        # Кнопка "Додати файли"
-        if st.button("📂 Додати файли (CSV)", type="primary", use_container_width=True):
+        if st.button("📁 Додати файли (CSV)", type="primary", use_container_width=True):
             components.html("""
                 <script>
                     window.parent.document.querySelector('input[type="file"]').click();
                 </script>
             """, height=0)
 
-        # Список файлів
         if st.session_state.my_files:
-            st.markdown(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
+            st.write(f"**Завантажено {len(st.session_state.my_files)} файлів:**")
             for i, file in enumerate(st.session_state.my_files):
+                col1, col2 = st.columns([0.78, 0.22])
                 size_kb = round(file.size / 1024, 1)
-                col1, col2 = st.columns([0.85, 0.15])
-                with col1:
-                    st.write(f"📄 {file.name} ({size_kb} KB)")
-                with col2:
-                    if st.button("❌", key=f"del_{i}", help="Видалити"):
-                        st.session_state.my_files.pop(i)
-                        st.rerun()
-
-            # Кнопка очистити всі
+                col1.write(f"📄 **{file.name}** \n({size_kb} KB)")
+                if col2.button("❌", key=f"del_{i}"):
+                    st.session_state.my_files.pop(i)
+                    st.rerun()
             if st.button("🗑️ Очистити всі", use_container_width=True):
                 st.session_state.my_files.clear()
                 st.rerun()
-
-            # Кнопка розрахувати
             if st.button("🔄 Розрахувати все", type="primary", use_container_width=True):
                 with st.spinner("Виконується повний розрахунок за всі роки..."):
                     st.session_state.broker_data, st.session_state.rates_data = Module1_Data_Import(st.session_state.my_files)
@@ -568,8 +497,7 @@ def render_custom_sidebar():
                 st.success("✅ Усе розраховано!")
                 st.rerun()
         else:
-            st.info("Завантажте CSV-файли брокера")
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.info("Завантажте файли, щоб з’явилася кнопка «Розрахувати все»")
 
 # ====================== ОБРОБКА ЗМІНИ РОКУ ТА ПЕРЕРАХУНОК ======================
 def recalculate_reports(selected_year):
@@ -640,9 +568,6 @@ def render_global_year_selector():
         )
 
 def render_main_tabs():
-    if st.session_state.broker_data is None:
-        return
-
     tabs_names = list(st.session_state.broker_data.keys()) + ["Rates_NBP", "FIFO_Data", "Finance_Data"]
     if st.session_state.get('fifo_df') is not None:
         tabs_names.extend(["Tax_Detailed_Report", "Tax_Summary_Report", "Transactions", "Portfolio"])
@@ -678,34 +603,22 @@ def render_main_tabs():
             elif name == "PIT38":
                 render_PIT38_Tab()
 
-# ====================== ГОЛОВНИЙ РЕНДЕР ======================
-# Горизонтальна панель (зверху)
-with st.container():
-    st.markdown('<div class="custom-top-bar">', unsafe_allow_html=True)
-    render_top_bar()
+# ====================== ЗАПУСК ======================
+render_sidebar()
+
+if st.session_state.broker_data is not None:
+    render_global_year_selector()
+    render_main_tabs()
+else:
+    st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
+    st.markdown("""
+    <h1 style="text-align:center;">🧮 FIFO Tax Calculator</h1>
+    <p style="text-align:center; font-size:1.3rem; margin:20px 0;">
+        Сучасний калькулятор податків для інвесторів з Польщі
+    </p>
+    """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
-# Основна структура: дві колонки (вертикальна панель + контент)
-col_left, col_right = st.columns([1, 4], gap="medium")
-
-with col_left:
-    render_custom_sidebar()
-
-with col_right:
-    if st.session_state.broker_data is not None:
-        render_global_year_selector()
-        render_main_tabs()
-    else:
-        # Привітальний блок
-        st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
-        st.markdown("""
-        <h1 style="text-align:center;">🧮 FIFO Tax Calculator</h1>
-        <p style="text-align:center; font-size:1.3rem; margin:20px 0;">
-            Сучасний калькулятор податків для інвесторів з Польщі
-        </p>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.info("📥 Завантажте CSV-файли брокера в лівій панелі та натисніть «Розрахувати все»")
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            st.image("https://picsum.photos/id/1015/800/400", use_column_width=True)
+    st.info("📥 Завантажте CSV-файли брокера в боковій панелі та натисніть «Розрахувати все»")
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.image("https://picsum.photos/id/1015/800/400", use_column_width=True)
