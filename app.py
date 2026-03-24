@@ -61,28 +61,12 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
-    section[data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }     /* Для сайдбару: прибираємо верхній відступ у першого дочірнього контейнера, щоб заголовок був максимально вгорі */
+    section[data-testid="stSidebar"] > div:first-child { padding-top: 0; }        /* Прибираємо верхній відступ у контейнера сайдбару */
 
-  /* Зменшуємо висоту кнопки згортання сайдбару (стрілка) */
-    button[kind="header"] {
-        height: 20px;
-        min-height: 20px;
-        padding: 0;
-        margin: 0;
-        line-height: 20px;
-    }
-
-    /* Прибираємо відступи у контейнера сайдбару */
-    section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 0;
-    }
-
-    /* Прибираємо верхній відступ у заголовка */
+    /* Другий варіант: піднімаємо заголовок нагору за допомогою негативного margin-top */
     section[data-testid="stSidebar"] h1 {
-        margin-top: 0;
+        margin-top: -20px;                                                         /* Регулюйте це значення, щоб підняти заголовок вище */
     }
-
-    
 </style>
 """, unsafe_allow_html=True)
 
