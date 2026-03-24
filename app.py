@@ -29,34 +29,42 @@ from calc import (
     safe_get_loc
 )
 
+
+# ====================== ІНІЦІАЛІЗАЦІЯ ==================================================================================================================
+st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
+init_auth_session()
+
+# Додаємо заголовок у сайдбар ДО кнопок авторизації
+with st.sidebar:
+    st.title("🧮 Калькулятор податків FIFO")
+    st.markdown("---")
+
+show_auth_status_and_logout()
+
+
 # ====================== СУЧАСНИЙ CSS ================================================================================================================
 st.markdown("""
 <style>
-    .stAppHeader { background: transparent; height: 0; }
-    a[data-testid="stLogo"] { display: none; }
-    div[data-testid="stDecoration"] { display: none; }
-    button[data-testid="baseButton-header"] { display: none !important; }
-    .main > div:first-child { padding-top: 0.5rem; }
-    .block-container { padding-top: 1rem; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    h1, h2, h3 { color: #1a3c5e; }
-    .welcome-card {
+    .stAppHeader { background: transparent; height: 0; }                           /* Головний хедер (верхня панель з навігацією) робимо прозорим і з нульовою висотою */
+    a[data-testid="stLogo"] { display: none; }                                     /* Ховаємо логотип Streamlit, який за замовчуванням з'являється зліва в хедері */
+    div[data-testid="stDecoration"] { display: none; }                             /* Ховаємо декоративний елемент (лінію або тінь), який додається автоматично */
+    button[data-testid="baseButton-header"] { display: none !important; }          /* Ховаємо кнопку, що відповідає за розгортання/згортання сайдбару в хедері */
+    .main > div:first-child { padding-top: 0.5rem; }                               /* Для основного контенту: зменшуємо відступ зверху від першого дочірнього елемента */
+    .block-container { padding-top: 1rem; }                                        /* Зменшуємо відступ зверху для контейнера з усім вмістом сторінки (блок контенту) */
+    #MainMenu {visibility: hidden;}                                                /* Ховаємо стандартне меню Streamlit (три крапки у верхньому правому куті) */
+    footer {visibility: hidden;}                                                   /* Ховаємо футер (напис "Made with Streamlit") */
+    h1, h2, h3 { color: #1a3c5e; }                                                 /* Встановлюємо колір для заголовків h1, h2, h3 по всьому застосунку */
+    .welcome-card {                                                                /* Стилі для привітальної картки, яка показується, коли немає даних */
         background: linear-gradient(135deg, #f8f9fa, #e9f0ff);
         padding: 40px;
         border-radius: 16px;
         text-align: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
-    section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 0rem;
-    }
+    section[data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }     /* Для сайдбару: прибираємо верхній відступ у першого дочірнього контейнера, щоб заголовок був максимально вгорі */
 </style>
 """, unsafe_allow_html=True)
-# ====================== ІНІЦІАЛІЗАЦІЯ ==================================================================================================================
-st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
-init_auth_session()
-show_auth_status_and_logout()
+
 
 # ====================== КЛЮЧІ СЕСІЇ =====================================================================================================================
 keys = [
@@ -455,8 +463,6 @@ def update_file_list():
 
 def render_sidebar():
     with st.sidebar:
-        st.title("🧮 Калькулятор податків FIFO")
-        st.markdown("---")
         st.markdown("""
         <style>
             div[data-testid="stFileUploader"] { display: none !important; }
