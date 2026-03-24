@@ -61,7 +61,7 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
-    section[data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }     /* Для сайдбару: прибираємо верхній відступ у першого дочірнього контейнера, щоб заголовок був максимально вгорі */
+    section[data-testid="stSidebar"] > div:first-child { padding-top: -10rem; }     /* Для сайдбару: прибираємо верхній відступ у першого дочірнього контейнера, щоб заголовок був максимально вгорі */
 </style>
 """, unsafe_allow_html=True)
 
