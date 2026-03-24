@@ -51,7 +51,7 @@ def check_subscription_status():
         st.session_state.subscription_plan = "free"
 
 # ====================== МОДАЛЬНЕ ВІКНО ЛОГІН ======================
-@st.dialog("🔑 Увійти")
+@st.dialog("Увійти")
 def login_dialog():
     st.markdown("**Введіть дані для входу**")
     with st.form("login_form"):
@@ -66,13 +66,13 @@ def login_dialog():
                 st.session_state.user = res.user
                 st.session_state.authenticated = True
                 check_subscription_status()
-                st.success(f"✅ Вітаємо, {res.user.email}!")
+                st.success(f"Вітаємо, {res.user.email}!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Помилка входу: {e}")
 
 # ====================== МОДАЛЬНЕ ВІКНО РЕЄСТРАЦІЯ ======================
-@st.dialog("📝 Реєстрація")
+@st.dialog("Реєстрація")
 def register_dialog():
     st.markdown("**Створити новий акаунт**")
     with st.form("register_form"):
@@ -106,10 +106,10 @@ def show_auth_status_and_logout():
         st.sidebar.markdown("**🔓 Гість (free-режим)**")
         col1, col2 = st.sidebar.columns(2)
         with col1:
-            if st.button("🔑 Увійти", use_container_width=True):
+            if st.button("Увійти", use_container_width=True):
                 login_dialog()
         with col2:
-            if st.button("📝 Реєстрація", use_container_width=True):
+            if st.button("Реєстрація", use_container_width=True):
                 register_dialog()
 
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE ======================
