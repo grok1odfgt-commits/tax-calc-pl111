@@ -91,29 +91,25 @@ def register_dialog():
             except Exception as e:
                 st.error(f"Помилка реєстрації: {e}")
 
-# ====================== ФУНКЦІЯ ДЛЯ ВІДОБРАЖЕННЯ ТОП-БАРУ ======================
-def render_top_bar():
-    """Створює горизонтальну панель з інформацією про користувача та кнопками."""
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        st.markdown("**🧮 FIFO Tax Calculator**")
+# ====================== СТАТУС + КНОПКИ В SIDEBAR ======================
+def show_auth_status_and_logout():
     if st.session_state.authenticated and st.session_state.user:
-        with col2:
-            st.markdown(f"👤 {st.session_state.user.email}")
-        with col3:
-            status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
-            st.markdown(f"{status}")
-            if st.button("🚪 Вийти", key="logout_top", use_container_width=True):
-                supabase.auth.sign_out()
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
+        status = "✅ PRO" if st.session_state.is_pro else "🔓 Free"
+        st.sidebar.markdown(f"**Користувач:** {st.session_state.user.email}")
+        st.sidebar.markdown(f"**Статус:** {status}")
+        if st.sidebar.button("🚪 Вийти", use_container_width=True, type="secondary"):
+            supabase.auth.sign_out()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
     else:
-        with col2:
-            if st.button("🔑 Увійти", key="login_top", use_container_width=True):
+        st.sidebar.markdown("**🔓 Гість (free-режим)**")
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.button("🔑 Увійти", use_container_width=True):
                 login_dialog()
-        with col3:
-            if st.button("📝 Реєстрація", key="register_top", use_container_width=True):
+        with col2:
+            if st.button("📝 Реєстрація", use_container_width=True):
                 register_dialog()
 
 # ====================== ОБМЕЖЕННЯ ДЛЯ FREE ======================
