@@ -68,7 +68,7 @@ st.markdown("""
         overflow-x: hidden;                                /* Щоб нічого не вилазило */
     }
     section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 40px;                                 /* Додаємо відступ зверху, щоб вміст не накладався на заголовок */
+        padding-top: -10px;                                 /* Додаємо відступ зверху, щоб вміст не накладався на заголовок */
     }
     section[data-testid="stSidebar"] h1 {
         position: absolute;                                /* Абсолютне позиціонування */
