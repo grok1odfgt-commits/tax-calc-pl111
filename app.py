@@ -29,7 +29,7 @@ from calc import (
     safe_get_loc
 )
 
-# ====================== СУЧАСНИЙ CSS ======================
+# ====================== СУЧАСНИЙ CSS ================================================================================================================
 st.markdown("""
 <style>
     .stAppHeader { background: transparent; height: 0; }
@@ -48,15 +48,17 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0rem;
+    }
 </style>
 """, unsafe_allow_html=True)
-
-# ====================== ІНІЦІАЛІЗАЦІЯ ======================
+# ====================== ІНІЦІАЛІЗАЦІЯ ==================================================================================================================
 st.set_page_config(layout="wide", page_title="FIFO Tax Calculator", page_icon="🧮")
 init_auth_session()
 show_auth_status_and_logout()
 
-# ====================== КЛЮЧІ СЕСІЇ ======================
+# ====================== КЛЮЧІ СЕСІЇ =====================================================================================================================
 keys = [
     'broker_data', 'rates_data', 'fifo_df', 'finance_df', 'report_blocks',
     'sales_summary', 'profit_summary', 'summary_df', 'summary_sales', 'summary_profit',
