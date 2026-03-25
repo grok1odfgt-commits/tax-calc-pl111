@@ -45,16 +45,16 @@ show_auth_status_and_logout()
 # ====================== СУЧАСНИЙ CSS ================================================================================================================
 st.markdown("""
 <style>
-    .stAppHeader { background: transparent; height: 0; }                           /* Головний хедер (верхня панель з навігацією) робимо прозорим і з нульовою висотою */
-    a[data-testid="stLogo"] { display: none; }                                     /* Ховаємо логотип Streamlit, який за замовчуванням з'являється зліва в хедері */
-    div[data-testid="stDecoration"] { display: none; }                             /* Ховаємо декоративний елемент (лінію або тінь), який додається автоматично */
-    button[data-testid="baseButton-header"] { display: none !important; }          /* Ховаємо кнопку, що відповідає за розгортання/згортання сайдбару в хедері */
-    .main > div:first-child { padding-top: 0.5rem; }                               /* Для основного контенту: зменшуємо відступ зверху від першого дочірнього елемента */
-    .block-container { padding-top: 1rem; }                                        /* Зменшуємо відступ зверху для контейнера з усім вмістом сторінки (блок контенту) */
-    #MainMenu {visibility: hidden;}                                                /* Ховаємо стандартне меню Streamlit (три крапки у верхньому правому куті) */
-    footer {visibility: hidden;}                                                   /* Ховаємо футер (напис "Made with Streamlit") */
-    h1, h2, h3 { color: #1a3c5e; }                                                 /* Встановлюємо колір для заголовків h1, h2, h3 по всьому застосунку */
-    .welcome-card {                                                                /* Стилі для привітальної картки, яка показується, коли немає даних */
+    .stAppHeader { background: transparent; height: 0; }
+    a[data-testid="stLogo"] { display: none; }
+    div[data-testid="stDecoration"] { display: none; }
+    button[data-testid="baseButton-header"] { display: none !important; }
+    .main > div:first-child { padding-top: 0.5rem; }
+    .block-container { padding-top: 1rem; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    h1, h2, h3 { color: #1a3c5e; }
+    .welcome-card {
         background: linear-gradient(135deg, #f8f9fa, #e9f0ff);
         padding: 40px;
         border-radius: 16px;
@@ -64,20 +64,24 @@ st.markdown("""
 
     /* Третій варіант: абсолютне позиціонування заголовка */
     section[data-testid="stSidebar"] {
-        position: relative;                                /* контейнер сайдбару стає відносним, щоб абсолютно позиціонований заголовок орієнтувався на нього */
-        overflow-x: hidden;                                /* Щоб нічого не вилазило */
+        position: relative;
+        overflow-x: hidden;
     }
     section[data-testid="stSidebar"] > div:first-child {
-        padding-top: -10px;                                 /* основний контейнер вмісту отримує верхній відступ, щоб інші елементи (кнопки, файли) не наїжджали на заголовок. Можна змінювати */
+        padding-top: 0px;          /* Відступ для контенту, щоб не наїжджав на заголовок */
     }
     section[data-testid="stSidebar"] h1 {
-        position: absolute;                                /* Абсолютне позиціонування */
-        top: -50;                                          /* Відступ заголовку від верху сайдбару */
-        left: 0px;                                        /* Відступ звголовку зліва (можна змінити, щоб не перекривати кнопку) */
+        position: absolute;
+        top: -50;                     /* Притискаємо заголовок до верху */
+        left: 0;
         margin: 0;
         padding: 0;
-        z-index: 10;                                       /* Щоб був поверх кнопки */
-        font-size: 1.2rem;                                 /* За бажанням, можна змінити розмір */
+        z-index: 10;
+        font-size: 1.2rem;
+    }
+    /* Піднімаємо горизонтальну лінію вгору, зменшуючи відстань до заголовка */
+    section[data-testid="stSidebar"] hr {
+        margin-top: -20px;          /* Регулюйте це значення, щоб лінія була ближче до заголовка */
     }
 </style>
 """, unsafe_allow_html=True)
