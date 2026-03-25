@@ -14,4 +14,4 @@ supabase
 openpyxl
 
 # Якщо пізніше додаси Stripe або щось ще — пиши тут
-# stripe
+stripe
